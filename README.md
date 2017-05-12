@@ -8,8 +8,9 @@
 [docsrs-image]: https://docs.rs/debug_stub_derive/badge.svg?version=0.1.0
 [docsrs]: https://docs.rs/debug_stub_derive/0.1.0/
 
-A drop-in replacment for [`fmt::Debug`](https://doc.rust-lang.org/std/fmt/trait.Debug.html) 
-with support for replacment values for non-debug implementing members.
+A drop-in replacement for `#[derive(Debug)]`
+that supports replacement values for members which do not implement 
+[`fmt::Debug`](https://doc.rust-lang.org/std/fmt/trait.Debug.html).
 
 ## Usage
 
