@@ -16,7 +16,7 @@
 //! // trait.
 //! struct ExternalCrateStruct;
 //!
-//! // A struct in the current trait which wants to cleanly expose
+//! // A struct in the current crate which wants to cleanly expose
 //! // itself to the outside world with an implementation of `fmt::Debug`.
 //! #[derive(DebugStub)]
 //! pub struct PubStruct {
@@ -32,7 +32,7 @@
 //!
 //! }), "PubStruct { a: true, b: \"ReplacementValue\" }");
 //!
-//! // A enum in the current trait which wants to cleanly expose
+//! // A enum in the current crate which wants to cleanly expose
 //! // itself to the outside world with an implementation of `fmt::Debug`.
 //! #[derive(DebugStub)]
 //! pub enum PubEnum {
