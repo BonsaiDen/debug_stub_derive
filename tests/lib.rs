@@ -139,6 +139,62 @@ fn test_struct_compare_std() {
 
 }
 
+#[test]
+fn test_struct_with_type_parameters() {
+
+    use std::fmt::{Debug, Display};
+
+    #[derive(DebugStub)]
+    struct TestStruct<T: Display + Debug> {
+        t: T
+    }
+
+    assert_eq!(
+        format!("{:?}", TestStruct {
+            t: 42
+        }),
+        "TestStruct { t: 42 }"
+    );
+
+    assert_eq!(
+        format!("{:#?}", TestStruct {
+            t: 42
+        }),
+        r#"TestStruct {
+    t: 42
+}"#
+    );
+
+}
+
+#[test]
+fn test_struct_with_type_where_clause() {
+
+    use std::fmt::{Debug, Display};
+
+    #[derive(DebugStub)]
+    struct TestStruct<T> where T: Display + Debug {
+        t: T
+    }
+
+    assert_eq!(
+        format!("{:?}", TestStruct {
+            t: 42
+        }),
+        "TestStruct { t: 42 }"
+    );
+
+    assert_eq!(
+        format!("{:#?}", TestStruct {
+            t: 42
+        }),
+        r#"TestStruct {
+    t: 42
+}"#
+    );
+
+}
+
 
 // Enum Tests -----------------------------------------------------------------
 
@@ -357,10 +413,51 @@ fn test_enum_compare_std() {
 
 }
 
-// Other Tests ----------------------------------------------------------------
+#[test]
+fn test_enum_with_type_parameters() {
+
+    use std::fmt::{Debug, Display};
+
+    #[derive(DebugStub)]
+    enum TestEnum<T: Display + Debug> {
+        VariantA(T)
+    }
+
+    assert_eq!(
+        format!("{:?}", TestEnum::VariantA(true)),
+        "VariantA(true)"
+    );
+
+    assert_eq!(
+        format!("{:#?}", TestEnum::VariantA(true)),
+        r#"VariantA(
+    true
+)"#
+    );
+
+}
 
 #[test]
-fn test_struct_empty() {
+fn test_enum_with_type_where_clause() {
+
+    use std::fmt::{Debug, Display};
+
+    #[derive(DebugStub)]
+    enum TestEnum<T> where T: Display + Debug {
+        VariantA(T)
+    }
+
+    assert_eq!(
+        format!("{:?}", TestEnum::VariantA(true)),
+        "VariantA(true)"
+    );
+
+    assert_eq!(
+        format!("{:#?}", TestEnum::VariantA(true)),
+        r#"VariantA(
+    true
+)"#
+    );
 
 }
 

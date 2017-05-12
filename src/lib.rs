@@ -83,12 +83,14 @@ fn expand_derive_serialize(ast: &syn::DeriveInput) -> Result<quote::Tokens, Stri
         syn::Body::Struct(ref data) => {
             Ok(implement_struct_debug(
                 &ast.ident,
+                &ast.generics,
                 generate_field_tokens(data.fields())
             ))
         },
         syn::Body::Enum(ref variants) => {
             Ok(implement_enum_debug(
                 &ast.ident,
+                &ast.generics,
                 variants.iter().map(|variant| {
                     generate_enum_variant_tokens(&ast.ident, variant)
 
@@ -217,14 +219,20 @@ fn extract_value_attr(attrs: &[syn::Attribute]) -> Option<&str> {
     None
 }
 
-fn implement_struct_debug(ident: &syn::Ident, tokens: Vec<quote::Tokens>) -> quote::Tokens {
+fn implement_struct_debug(
+    ident: &syn::Ident,
+    generics: &syn::Generics,
+    tokens: Vec<quote::Tokens>
+
+) -> quote::Tokens {
 
     let name = ident.to_string();
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
     if tokens.is_empty() {
         quote! {
-            use std::fmt;
-            impl fmt::Debug for #ident {
-                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            impl #impl_generics ::std::fmt::Debug for #ident #ty_generics #where_clause {
+                fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
                     f.debug_struct(#name).finish()
                 }
             }
@@ -232,7 +240,7 @@ fn implement_struct_debug(ident: &syn::Ident, tokens: Vec<quote::Tokens>) -> quo
 
     } else {
         quote! {
-            impl ::std::fmt::Debug for #ident {
+            impl #impl_generics ::std::fmt::Debug for #ident #ty_generics #where_clause {
                 fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
                     f.debug_struct(#name).#(#tokens).*.finish()
                 }
@@ -244,11 +252,15 @@ fn implement_struct_debug(ident: &syn::Ident, tokens: Vec<quote::Tokens>) -> quo
 
 fn implement_enum_debug(
     ident: &syn::Ident,
+    generics: &syn::Generics,
     cases: Vec<quote::Tokens>
 
 ) -> quote::Tokens {
+
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
     quote! {
-        impl ::std::fmt::Debug for #ident {
+        impl #impl_generics ::std::fmt::Debug for #ident #ty_generics #where_clause {
             fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
                 match *self {
                     #(#cases),*
@@ -256,5 +268,6 @@ fn implement_enum_debug(
             }
         }
     }
+
 }
 
