@@ -343,6 +343,88 @@ fn test_struct_result_err() {
 
 }
 
+#[test]
+fn test_struct_optional_compare_std() {
+
+    mod a {
+        #[derive(DebugStub)]
+        pub struct TestStruct {
+            pub a: Option<String>,
+            pub b: Option<u64>
+        }
+    }
+
+    mod b {
+        #[derive(Debug)]
+        pub struct TestStruct {
+            pub a: Option<String>,
+            pub b: Option<u64>
+        }
+    }
+
+    let struct_a = a::TestStruct {
+        a: Some("Foo".to_string()),
+        b: None
+    };
+
+    let struct_b = b::TestStruct {
+        a: Some("Foo".to_string()),
+        b: None
+    };
+
+    assert_eq!(
+        format!("{:?}", struct_a),
+        format!("{:?}", struct_b)
+    );
+
+    assert_eq!(
+        format!("{:#?}", struct_a),
+        format!("{:#?}", struct_b)
+    );
+
+}
+
+#[test]
+fn test_struct_result_compare_std() {
+
+    mod a {
+        #[derive(DebugStub)]
+        pub struct TestStruct {
+            pub a: Result<String, bool>,
+            pub b: Result<u64, ()>
+        }
+    }
+
+    mod b {
+        #[derive(Debug)]
+        pub struct TestStruct {
+            pub a: Result<String, bool>,
+            pub b: Result<u64, ()>
+        }
+    }
+
+    let struct_a = a::TestStruct {
+        a: Ok("Foo".to_string()),
+        b: Err(())
+    };
+
+    let struct_b = b::TestStruct {
+        a: Ok("Foo".to_string()),
+        b: Err(())
+    };
+
+    assert_eq!(
+        format!("{:?}", struct_a),
+        format!("{:?}", struct_b)
+    );
+
+    assert_eq!(
+        format!("{:#?}", struct_a),
+        format!("{:#?}", struct_b)
+    );
+
+}
+
 
 // Enum Tests -----------------------------------------------------------------
 
@@ -764,6 +846,124 @@ fn test_enum_result_err() {
         r#"VariantA(
     Ok("Foo")
 )"#
+    );
+
+}
+
+#[test]
+fn test_enum_optional_compare_std() {
+
+    mod a {
+        #[derive(DebugStub)]
+        pub enum TestEnum {
+            VariantA(Option<String>, Option<String>),
+            VariantB {
+                a: Option<String>,
+                b: Option<String>
+            }
+        }
+    }
+
+    mod b {
+        #[derive(Debug)]
+        pub enum TestEnum {
+            VariantA(Option<String>, Option<String>),
+            VariantB {
+                a: Option<String>,
+                b: Option<String>
+            }
+        }
+    }
+
+    let enum_a_a = a::TestEnum::VariantA(None, Some("Foo".to_string()));
+    let enum_a_b = a::TestEnum::VariantB {
+        a: Some("Foo".to_string()),
+        b: None
+    };
+
+    let enum_b_a = b::TestEnum::VariantA(None, Some("Foo".to_string()));
+    let enum_b_b = b::TestEnum::VariantB {
+        a: Some("Foo".to_string()),
+        b: None
+    };
+
+    assert_eq!(
+        format!("{:?}", enum_a_a),
+        format!("{:?}", enum_b_a)
+    );
+
+    assert_eq!(
+        format!("{:#?}", enum_a_a),
+        format!("{:#?}", enum_b_a)
+    );
+
+    assert_eq!(
+        format!("{:?}", enum_a_b),
+        format!("{:?}", enum_b_b)
+    );
+
+    assert_eq!(
+        format!("{:#?}", enum_a_b),
+        format!("{:#?}", enum_b_b)
+    );
+
+}
+
+#[test]
+fn test_enum_result_compare_std() {
+
+    mod a {
+        #[derive(DebugStub)]
+        pub enum TestEnum {
+            VariantA(Result<String, bool>, Result<String, bool>),
+            VariantB {
+                a: Result<String, bool>,
+                b: Result<String, bool>
+            }
+        }
+    }
+
+    mod b {
+        #[derive(Debug)]
+        pub enum TestEnum {
+            VariantA(Result<String, bool>, Result<String, bool>),
+            VariantB {
+                a: Result<String, bool>,
+                b: Result<String, bool>
+            }
+        }
+    }
+
+    let enum_a_a = a::TestEnum::VariantA(Err(true), Ok("Foo".to_string()));
+    let enum_a_b = a::TestEnum::VariantB {
+        a: Ok("Foo".to_string()),
+        b: Err(true)
+    };
+
+    let enum_b_a = b::TestEnum::VariantA(Err(true), Ok("Foo".to_string()));
+    let enum_b_b = b::TestEnum::VariantB {
+        a: Ok("Foo".to_string()),
+        b: Err(true)
+    };
+
+    assert_eq!(
+        format!("{:?}", enum_a_a),
+        format!("{:?}", enum_b_a)
+    );
+
+    assert_eq!(
+        format!("{:#?}", enum_a_a),
+        format!("{:#?}", enum_b_a)
+    );
+
+    assert_eq!(
+        format!("{:?}", enum_a_b),
+        format!("{:?}", enum_b_b)
+    );
+
+    assert_eq!(
+        format!("{:#?}", enum_a_b),
+        format!("{:#?}", enum_b_b)
     );
 
 }
