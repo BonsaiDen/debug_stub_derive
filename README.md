@@ -5,8 +5,8 @@
 
 [cratesio-image]: https://img.shields.io/crates/v/debug_stub_derive.svg
 [cratesio]: https://crates.io/crates/debug_stub_derive
-[docsrs-image]: https://docs.rs/debug_stub_derive/badge.svg?version=0.2.0
-[docsrs]: https://docs.rs/debug_stub_derive/0.2.0/
+[docsrs-image]: https://docs.rs/debug_stub_derive/badge.svg?version=0.3.0
+[docsrs]: https://docs.rs/debug_stub_derive/0.3.0/
 
 A drop-in replacement for `#[derive(Debug)]`
 that supports replacement values for members which do not implement 
@@ -18,7 +18,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-debug_stub_derive = "0.2.0"
+debug_stub_derive = "0.3.0"
 ```
 
 and this to your crate root:
