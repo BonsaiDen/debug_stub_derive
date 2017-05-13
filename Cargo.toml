@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["Ivo Wetzel <ivo.wetzel@googlemail.com>"]
 description = "A drop-in replacement for `#[derive(Debug)]` that supports replacement values for members which do not implement `fmt::Debug.`"
 repository = "https://github.com/BonsaiDen/debug_stub_derive.git"
+documentation = "https://docs.rs/debug_stub_derive/0.1.0/"
 readme = "README.md"
 keywords = ["debug", "trait", "proc_macro"]
 categories = ["procedural-marco"]
