@@ -240,7 +240,7 @@ fn test_struct_optional() {
 }
 
 #[test]
-fn test_struct_result() {
+fn test_struct_result_both() {
 
     struct StructWithoutDebug;
     struct ErrorWithoutDebug;
@@ -284,6 +284,65 @@ fn test_struct_result() {
     );
 
 }
+
+#[test]
+fn test_struct_result_ok() {
+
+    struct StructWithoutDebug;
+
+    #[derive(DebugStub)]
+    struct TestStruct {
+        #[debug_stub(ok="StructWithoutDebugReplaceValue")]
+        s: Result<StructWithoutDebug, ()>
+    }
+
+    assert_eq!(
+        format!("{:?}", TestStruct {
+            s: Ok(StructWithoutDebug)
+        }),
+        "TestStruct { s: StructWithoutDebugReplaceValue }"
+    );
+
+    assert_eq!(
+        format!("{:#?}", TestStruct {
+            s: Ok(StructWithoutDebug)
+        }),
+        r#"TestStruct {
+    s: StructWithoutDebugReplaceValue
+}"#
+    );
+
+}
+
+#[test]
+fn test_struct_result_err() {
+
+    struct ErrorWithoutDebug;
+
+    #[derive(DebugStub)]
+    struct TestStruct {
+        #[debug_stub(err="ErrorWithoutDebugReplaceValue")]
+        s: Result<(), ErrorWithoutDebug>
+    }
+
+    assert_eq!(
+        format!("{:?}", TestStruct {
+            s: Err(ErrorWithoutDebug)
+        }),
+        "TestStruct { s: ErrorWithoutDebugReplaceValue }"
+    );
+
+    assert_eq!(
+        format!("{:#?}", TestStruct {
+            s: Err(ErrorWithoutDebug)
+        }),
+        r#"TestStruct {
+    s: ErrorWithoutDebugReplaceValue
+}"#
+    );
+
+}
+
 
 // Enum Tests -----------------------------------------------------------------
 
@@ -590,7 +649,7 @@ fn test_enum_optional() {
 }
 
 #[test]
-fn test_enum_result() {
+fn test_enum_result_both() {
 
     struct StructWithoutDebug;
     struct ErrorWithoutDebug;
@@ -624,6 +683,86 @@ fn test_enum_result() {
         format!("{:#?}", TestEnum::VariantA(Ok(StructWithoutDebug))),
         r#"VariantA(
     StructWithoutDebugReplaceValue
+)"#
+    );
+
+}
+
+
+#[test]
+fn test_enum_result_ok() {
+
+    struct StructWithoutDebug;
+
+    #[derive(DebugStub)]
+    enum TestEnum {
+        VariantA(
+            #[debug_stub(ok="StructWithoutDebugReplaceValue")]
+            Result<StructWithoutDebug, String>
+        )
+    }
+
+    assert_eq!(
+        format!("{:?}", TestEnum::VariantA(Ok(StructWithoutDebug))),
+        "VariantA(StructWithoutDebugReplaceValue)"
+    );
+
+    assert_eq!(
+        format!("{:#?}", TestEnum::VariantA(Ok(StructWithoutDebug))),
+        r#"VariantA(
+    StructWithoutDebugReplaceValue
+)"#
+    );
+
+    assert_eq!(
+        format!("{:?}", TestEnum::VariantA(Err("Foo".to_string()))),
+        "VariantA(Err(\"Foo\"))"
+    );
+
+    assert_eq!(
+        format!("{:#?}", TestEnum::VariantA(Err("Foo".to_string()))),
+        r#"VariantA(
+    Err("Foo")
+)"#
+    );
+
+}
+
+
+#[test]
+fn test_enum_result_err() {
+
+    struct ErrorWithoutDebug;
+
+    #[derive(DebugStub)]
+    enum TestEnum {
+        VariantA(
+            #[debug_stub(err="ErrorWithoutDebugReplaceValue")]
+            Result<String, ErrorWithoutDebug>
+        )
+    }
+
+    assert_eq!(
+        format!("{:?}", TestEnum::VariantA(Err(ErrorWithoutDebug))),
+        "VariantA(ErrorWithoutDebugReplaceValue)"
+    );
+
+    assert_eq!(
+        format!("{:#?}", TestEnum::VariantA(Err(ErrorWithoutDebug))),
+        r#"VariantA(
+    ErrorWithoutDebugReplaceValue
+)"#
+    );
+
+    assert_eq!(
+        format!("{:?}", TestEnum::VariantA(Ok("Foo".to_string()))),
+        "VariantA(Ok(\"Foo\"))"
+    );
+
+    assert_eq!(
+        format!("{:#?}", TestEnum::VariantA(Ok("Foo".to_string()))),
+        r#"VariantA(
+    Ok("Foo")
 )"#
     );
 
