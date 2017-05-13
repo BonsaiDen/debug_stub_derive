@@ -30,7 +30,7 @@
 //!     a: true,
 //!     b: ExternalCrateStruct
 //!
-//! }), "PubStruct { a: true, b: \"ReplacementValue\" }");
+//! }), "PubStruct { a: true, b: ReplacementValue }");
 //!
 //! // A enum in the current crate which wants to cleanly expose
 //! // itself to the outside world with an implementation of `fmt::Debug`.
@@ -47,7 +47,7 @@
 //!     42,
 //!     ExternalCrateStruct
 //!
-//! )), "VariantA(42, \"ReplacementValue\")");
+//! )), "VariantA(42, ReplacementValue)");
 //!
 //! # }
 //! ```
@@ -104,9 +104,9 @@ fn generate_field_tokens(fields: &[syn::Field]) -> Vec<quote::Tokens> {
     fields.iter().map(|field| {
         if let Some(ref ident) = field.ident {
             let name = ident.to_string();
-            if let Some(value) = extract_value_attr(&field.attrs) {
+            if let Some(tokens) = extract_value_attr(&ident, &field.attrs, true) {
                 quote! {
-                    field(#name, &#value)
+                    field(#name, &format_args!("{}", #tokens))
                 }
 
             } else {
@@ -144,9 +144,9 @@ fn generate_enum_variant_tokens(ident: &syn::Ident, variant: &syn::Variant) -> q
 
             let field_tokens: Vec<quote::Tokens> = fields.iter().zip(field_names.iter()).map(|(field, ident)| {
                 let name = ident.to_string();
-                if let Some(value) = extract_value_attr(&field.attrs) {
+                if let Some(tokens) = extract_value_attr(&ident, &field.attrs, false) {
                     quote! {
-                        field(#name, &#value)
+                        field(#name, &format_args!("{}", #tokens))
                     }
 
                 } else {
@@ -179,9 +179,9 @@ fn generate_enum_variant_tokens(ident: &syn::Ident, variant: &syn::Variant) -> q
             }).collect();
 
             let field_tokens: Vec<quote::Tokens> = fields.iter().zip(field_names.iter()).map(|(field, ident)| {
-                if let Some(value) = extract_value_attr(&field.attrs) {
+                if let Some(tokens) = extract_value_attr(&ident, &field.attrs, false) {
                     quote! {
-                        field(&#value)
+                        field(&format_args!("{}", #tokens))
                     }
 
                 } else {
@@ -208,17 +208,6 @@ fn generate_enum_variant_tokens(ident: &syn::Ident, variant: &syn::Variant) -> q
 
 }
 
-fn extract_value_attr(attrs: &[syn::Attribute]) -> Option<&str> {
-    for attr in attrs {
-        if attr.value.name() == "debug_stub" {
-            if let syn::MetaItem::NameValue(_, syn::Lit::Str(ref value, _)) = attr.value {
-                return Some(value);
-            }
-        }
-    }
-    None
-}
-
 fn implement_struct_debug(
     ident: &syn::Ident,
     generics: &syn::Generics,
@@ -241,9 +230,11 @@ fn implement_struct_debug(
     } else {
         quote! {
             impl #impl_generics ::std::fmt::Debug for #ident #ty_generics #where_clause {
+
                 fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
                     f.debug_struct(#name).#(#tokens).*.finish()
                 }
+
             }
         }
     }
@@ -267,6 +258,103 @@ fn implement_enum_debug(
                 }
             }
         }
+    }
+
+}
+
+fn extract_value_attr(
+    ident: &syn::Ident,
+    attrs: &[syn::Attribute],
+    use_self: bool
+
+) -> Option<quote::Tokens> {
+    for attr in attrs {
+        if attr.value.name() == "debug_stub" {
+
+            // Full replacements
+            if let syn::MetaItem::NameValue(_, syn::Lit::Str(ref value, _)) = attr.value {
+                return Some(quote! {
+                    &#value
+                });
+
+            } else if let syn::MetaItem::List(_, ref items) = attr.value {
+
+                // Result<ok, err>
+                if let (Some(ok), Some(err)) = (
+                    extract_named_value_attr(items, 0, "ok"),
+                    extract_named_value_attr(items, 1, "err")
+                ) {
+                    if use_self {
+                        return Some(quote! {
+                            &(if self.#ident.is_ok() {
+                                #ok
+
+                            } else {
+                                #err
+                            })
+                        });
+
+                    } else {
+                        return Some(quote! {
+                            &(if #ident.is_ok() {
+                                #ok
+
+                            } else {
+                                #err
+                            })
+                        });
+                    }
+
+                // Option<some>
+                } else if let Some(some) = extract_named_value_attr(items, 0, "some") {
+                    if use_self {
+                        return Some(quote! {
+                            &(if self.#ident.is_some() {
+                                #some
+
+                            } else {
+                                "None"
+                            })
+                        });
+
+                    } else {
+                        return Some(quote! {
+                            &(if #ident.is_some() {
+                                #some
+
+                            } else {
+                                "None"
+                            })
+                        });
+                    }
+                }
+
+            }
+        }
+    }
+    None
+}
+
+fn extract_named_value_attr<'a>(items: &'a [syn::NestedMetaItem], index: usize, name: &str) -> Option<&'a str> {
+
+    if items.len() > index {
+        if let syn::NestedMetaItem::MetaItem(
+            syn::MetaItem::NameValue(ref attr_name, syn::Lit::Str(ref value, _))
+
+        ) = items[index] {
+            if attr_name == name {
+                Some(value)
+
+            } else {
+                None
+            }
+
+        } else {
+            None
+        }
+
+    } else {
+        None
     }
 
 }
