@@ -90,7 +90,7 @@
 //!     a: Some(ExternalCrateStruct),
 //!     b: Ok(ExternalCrateStruct)
 //!
-//! }), "PubStruct { a: ReplacementSomeValue, b: ReplacementOkValue }");
+//! }), "PubStruct { a: Some(ReplacementSomeValue), b: Ok(ReplacementOkValue) }");
 //! # }
 //! ```
 #![deny(
@@ -368,21 +368,49 @@ fn implement_replace_attr(name: Option<String>, value: &str) -> quote::Tokens {
 }
 
 fn implement_some_attr(some: &str, name: Option<String>, ident: &syn::Ident) -> quote::Tokens {
-    field_block!(name, &format_args!("{}", if #ident.is_some() {
-        #some
+    if let Some(name) = name {
+        quote! {
+            (if #ident.is_some() {
+                f.field(#name, &format_args!("Some({})", #some))
+
+            } else {
+                f.field(#name, &format_args!("None"))
+            })
+        }
 
     } else {
-        "None"
-    }))
+        quote! {
+            (if #ident.is_some() {
+                f.field(&format_args!("Some({})", #some))
+
+            } else {
+                f.field(&format_args!("None"))
+            })
+        }
+    }
 }
 
 fn implement_result_attr(ok: &str, err: &str, name: Option<String>, ident: &syn::Ident) -> quote::Tokens {
-    field_block!(name, &format_args!("{}", if #ident.is_ok() {
-        #ok
+    if let Some(name) = name {
+        quote! {
+            (if #ident.is_ok() {
+                f.field(#name, &format_args!("Ok({})", #ok))
+
+            } else {
+                f.field(#name, &format_args!("Err({})", #err))
+            })
+        }
 
     } else {
-        #err
-    }))
+        quote! {
+            (if #ident.is_ok() {
+                f.field(&format_args!("Ok({})", #ok))
+
+            } else {
+                f.field(&format_args!("Err({})", #err))
+            })
+        }
+    }
 }
 
 fn implement_ok_attr(ok: &str, name: Option<String>, ident: &syn::Ident) -> quote::Tokens {
@@ -392,7 +420,7 @@ fn implement_ok_attr(ok: &str, name: Option<String>, ident: &syn::Ident) -> quot
                 f.field(#name, &format_args!("Err({:?})", #ident.as_ref().err().unwrap()))
 
             } else {
-                f.field(#name, &format_args!("{}", #ok))
+                f.field(#name, &format_args!("Ok({})", #ok))
             })
         }
 
@@ -402,7 +430,7 @@ fn implement_ok_attr(ok: &str, name: Option<String>, ident: &syn::Ident) -> quot
                 f.field(&format_args!("Err({:?})", #ident.as_ref().err().unwrap()))
 
             } else {
-                f.field(&format_args!("{}", #ok))
+                f.field(&format_args!("Ok({})", #ok))
             })
         }
     }
@@ -415,7 +443,7 @@ fn implement_err_attr(err: &str, name: Option<String>, ident: &syn::Ident) -> qu
                 f.field(#name, &format_args!("Ok({:?})", #ident.as_ref().ok().unwrap()))
 
             } else {
-                f.field(#name, &format_args!("{}", #err))
+                f.field(#name, &format_args!("Err({})", #err))
             })
         }
 
@@ -425,7 +453,7 @@ fn implement_err_attr(err: &str, name: Option<String>, ident: &syn::Ident) -> qu
                 f.field(&format_args!("Ok({:?})", #ident.as_ref().ok().unwrap()))
 
             } else {
-                f.field(&format_args!("{}", #err))
+                f.field(&format_args!("Err({})", #err))
             })
         }
     }
