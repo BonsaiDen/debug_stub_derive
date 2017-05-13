@@ -1,3 +1,11 @@
+// Copyright (c) 2015-2017 Ivo Wetzel
+
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
 //! This crate provides the `DebugStub` derive macro.
 //!
 //! The `DebugStub` derive macro can be used as a drop-in replacement for the
@@ -102,12 +110,12 @@ extern crate syn;
 use proc_macro::TokenStream;
 
 
-/// Implementation of the `#[derive(debug_stub)]` derive macro.
+/// Implementation of the `#[derive(DebugStub)]` derive macro.
 #[proc_macro_derive(DebugStub, attributes(debug_stub))]
 pub fn derive_debug_stub(input: TokenStream) -> TokenStream {
-    let input = syn::parse_derive_input(&input.to_string()).unwrap();
+    let input = syn::parse_derive_input(&input.to_string()).expect("Parse derive input failed.");
     match expand_derive_serialize(&input) {
-        Ok(expanded) => expanded.parse().unwrap(),
+        Ok(expanded) => expanded.parse().expect("Parse expansion failed."),
         Err(msg) => panic!(msg),
     }
 }
@@ -182,14 +190,8 @@ fn generate_field_tokens(fields: &[syn::Field]) -> Vec<quote::Tokens> {
         if let Some(ref ident) = field.ident {
             let name = ident.to_string();
             let ident = syn::Ident::new(format!("self.{}", ident));
-            if let Some(tokens) = extract_value_attr(&ident, &field.attrs, Some(&name)) {
-                tokens
-
-            } else {
-                quote! {
-                    f.field(#name, &#ident)
-                }
-            }
+            let (_, tokens) = extract_value_attr(&ident, &field.attrs, Some(name));
+            tokens
 
         } else {
             panic!("struct has unnamed fields")
@@ -206,29 +208,16 @@ fn generate_enum_variant_tokens(ident: &syn::Ident, variant: &syn::Variant) -> q
     match variant.data {
         syn::VariantData::Struct(ref fields) => {
 
-            let field_names: Vec<&syn::Ident> = fields.iter().map(|field| {
-                field.ident.as_ref().unwrap()
+            let (idents, tokens) = generate_enum_variant_fields(fields.iter().map(|field| {
+                let ident = field.ident.clone().expect("Tuple struct variant has unnamed fields");
+                (ident.clone(), &field.attrs, Some(ident.to_string()))
 
-            }).collect();
+            }).collect());
 
-            let field_tokens: Vec<quote::Tokens> = fields.iter().zip(field_names.iter()).map(|(field, ident)| {
-                let name = ident.to_string();
-                if let Some(tokens) = extract_value_attr(&ident, &field.attrs, Some(&name)) {
-                    tokens
-
-                } else {
-                    quote! {
-                        f.field(#name, &#ident)
-                    }
-                }
-
-            }).collect();
-
-            // TODO dry with below
             quote! {
-                #ident::#variant_ident{ #(ref #field_names),* } => {
+                #ident::#variant_ident { #(#idents),* } => {
                     let mut f = f.debug_struct(#variant_name);
-                    #(#field_tokens);*;
+                    #(#tokens);*;
                     f.finish()
                 }
             }
@@ -236,71 +225,99 @@ fn generate_enum_variant_tokens(ident: &syn::Ident, variant: &syn::Variant) -> q
         },
         syn::VariantData::Tuple(ref fields) => {
 
-            let field_names: Vec<syn::Ident> = fields.iter().enumerate().map(|(index, _)| {
-                syn::Ident::new(format!("tuple_{}", index))
+            let (idents, tokens) = generate_enum_variant_fields(fields.iter().enumerate().map(|(index, field)| {
+                (syn::Ident::new(format!("tuple_{}", index)), &field.attrs, None)
 
-            }).collect();
+            }).collect());
 
-            let field_tokens: Vec<quote::Tokens> = fields.iter().zip(field_names.iter()).map(|(field, ident)| {
-                // TODO if we never end up using the tuple name reduce it to _
-                // TODO or simply add allow unused
-                if let Some(tokens) = extract_value_attr(&ident, &field.attrs, None) {
-                    tokens
-
-                } else {
-                    quote! {
-                        f.field(&#ident)
-                    }
-                }
-
-            }).collect();
-
-            // TODO dry with above
             quote! {
-                #ident::#variant_ident( #(ref #field_names),* ) => {
+                #ident::#variant_ident( #(#idents),* ) => {
                     let mut f = f.debug_tuple(#variant_name);
-                    #(#field_tokens);*;
+                    #(#tokens);*;
                     f.finish()
                 }
             }
 
         },
-        syn::VariantData::Unit => quote! {
-            #ident::#variant_ident => {
-                f.debug_struct(#variant_name).finish()
+        syn::VariantData::Unit => {
+            quote! {
+                #ident::#variant_ident => {
+                    f.debug_struct(#variant_name).finish()
+                }
             }
         }
     }
 
 }
 
+fn generate_enum_variant_fields(
+    fields: Vec<(syn::Ident, &Vec<syn::Attribute>, Option<String>)>
+
+) -> (Vec<quote::Tokens>, Vec<quote::Tokens>) {
+
+    let mut idents = Vec::new();
+    let mut unused_fields = false;
+
+    let tokens: Vec<quote::Tokens> = fields.into_iter().map(|(ident, attrs, name)| {
+
+        let unnamed = name.is_none();
+        let (ident_used, tokens) = extract_value_attr(&ident, attrs, name);
+
+        if ident_used {
+            idents.push(quote! { ref #ident });
+
+        // Skip unused tuple fields to avoid "unused variable" warnings
+        } else if unnamed {
+            idents.push(quote! { _ });
+
+        // Skip unused struct fields to avoid "unused variable" warnings
+        } else {
+            unused_fields = true;
+        }
+
+        tokens
+
+    }).collect();
+
+    if unused_fields {
+        idents.push(quote! { .. });
+    }
+
+    (idents, tokens)
+
+}
+
 fn extract_value_attr(
     ident: &syn::Ident,
     attrs: &[syn::Attribute],
-    name: Option<&str>
+    name: Option<String>
 
-) -> Option<quote::Tokens> {
+) -> (bool, quote::Tokens) {
 
     for attr in attrs {
-        if attr.value.name() == "debug_stub" {
-            if let syn::MetaItem::NameValue(_, syn::Lit::Str(ref value, _)) = attr.value {
-                // TODO must rename the outer capture variable into _ to avoid unused variable
-                // warnings
-                return Some(implement_replace_attr(name, value));
+        if attr.value.name() != "debug_stub" {
+            continue;
 
-            } else if let syn::MetaItem::List(_, ref items) = attr.value {
-                match extract_named_value_attrs(items) {
-                    (None, None, Some(some)) => return Some(implement_some_attr(some, name, ident)),
-                    (Some(ok), Some(err), None) => return Some(implement_result_attr(ok, err, name, ident)),
-                    (Some(ok), None, None) => return Some(implement_ok_attr(ok, name, ident)),
-                    (None, Some(err), None) => return Some(implement_err_attr(err, name, ident)),
-                    _ => {}
-                }
+        } else if let syn::MetaItem::NameValue(_, syn::Lit::Str(ref value, _)) = attr.value {
+            return (false, implement_replace_attr(name, value));
+
+        } else if let syn::MetaItem::List(_, ref items) = attr.value {
+            match extract_named_value_attrs(items) {
+                (_, _, Some(some)) => return (true, implement_some_attr(some, name, ident)),
+                (Some(ok), Some(err), None) => return (true, implement_result_attr(ok, err, name, ident)),
+                (Some(ok), None, None) => return (true, implement_ok_attr(ok, name, ident)),
+                (None, Some(err), None) => return (true, implement_err_attr(err, name, ident)),
+                _ => {}
             }
         }
     }
 
-    None
+    if let Some(name) = name {
+        (true, quote! { f.field(#name, &#ident) })
+
+    } else {
+        (true, quote! { f.field(&#ident) })
+    }
 
 }
 
@@ -346,11 +363,11 @@ macro_rules! field_block {
     );
 }
 
-fn implement_replace_attr(name: Option<&str>, value: &str) -> quote::Tokens {
+fn implement_replace_attr(name: Option<String>, value: &str) -> quote::Tokens {
     field_block!(name, &format_args!("{}", #value))
 }
 
-fn implement_some_attr(some: &str, name: Option<&str>, ident: &syn::Ident) -> quote::Tokens {
+fn implement_some_attr(some: &str, name: Option<String>, ident: &syn::Ident) -> quote::Tokens {
     field_block!(name, &format_args!("{}", if #ident.is_some() {
         #some
 
@@ -359,7 +376,7 @@ fn implement_some_attr(some: &str, name: Option<&str>, ident: &syn::Ident) -> qu
     }))
 }
 
-fn implement_result_attr(ok: &str, err: &str, name: Option<&str>, ident: &syn::Ident) -> quote::Tokens {
+fn implement_result_attr(ok: &str, err: &str, name: Option<String>, ident: &syn::Ident) -> quote::Tokens {
     field_block!(name, &format_args!("{}", if #ident.is_ok() {
         #ok
 
@@ -368,7 +385,7 @@ fn implement_result_attr(ok: &str, err: &str, name: Option<&str>, ident: &syn::I
     }))
 }
 
-fn implement_ok_attr(ok: &str, name: Option<&str>, ident: &syn::Ident) -> quote::Tokens {
+fn implement_ok_attr(ok: &str, name: Option<String>, ident: &syn::Ident) -> quote::Tokens {
     if let Some(name) = name {
         quote! {
             (if #ident.is_err() {
@@ -391,7 +408,7 @@ fn implement_ok_attr(ok: &str, name: Option<&str>, ident: &syn::Ident) -> quote:
     }
 }
 
-fn implement_err_attr(err: &str, name: Option<&str>, ident: &syn::Ident) -> quote::Tokens {
+fn implement_err_attr(err: &str, name: Option<String>, ident: &syn::Ident) -> quote::Tokens {
     if let Some(name) = name {
         quote! {
             (if #ident.is_ok() {

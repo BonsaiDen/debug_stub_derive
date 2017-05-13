@@ -14,5 +14,6 @@ syn = { version = "0.11", features = ["visit"] }
 quote = "0.3.10"
 
 [lib]
+name="debug_stub_derive"
 proc-macro = true
 
