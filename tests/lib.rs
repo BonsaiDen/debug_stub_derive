@@ -233,7 +233,9 @@ fn test_struct_optional() {
             s: Some(StructWithoutDebug)
         }),
         r#"TestStruct {
-    s: Some(StructWithoutDebugReplaceValue)
+    s: Some(
+        StructWithoutDebugReplaceValue
+    )
 }"#
     );
 
@@ -263,7 +265,9 @@ fn test_struct_result_both() {
             s: Err(ErrorWithoutDebug)
         }),
         r#"TestStruct {
-    s: Err(ErrorWithoutDebugReplaceValue)
+    s: Err(
+        ErrorWithoutDebugReplaceValue
+    )
 }"#
     );
 
@@ -279,7 +283,9 @@ fn test_struct_result_both() {
             s: Ok(StructWithoutDebug)
         }),
         r#"TestStruct {
-    s: Ok(StructWithoutDebugReplaceValue)
+    s: Ok(
+        StructWithoutDebugReplaceValue
+    )
 }"#
     );
 
@@ -308,7 +314,9 @@ fn test_struct_result_ok() {
             s: Ok(StructWithoutDebug)
         }),
         r#"TestStruct {
-    s: Ok(StructWithoutDebugReplaceValue)
+    s: Ok(
+        StructWithoutDebugReplaceValue
+    )
 }"#
     );
 
@@ -337,7 +345,9 @@ fn test_struct_result_err() {
             s: Err(ErrorWithoutDebug)
         }),
         r#"TestStruct {
-    s: Err(ErrorWithoutDebugReplaceValue)
+    s: Err(
+        ErrorWithoutDebugReplaceValue
+    )
 }"#
     );
 
@@ -347,29 +357,41 @@ fn test_struct_result_err() {
 fn test_struct_optional_compare_std() {
 
     mod a {
+
+        pub struct Internal;
+
         #[derive(DebugStub)]
         pub struct TestStruct {
             pub a: Option<String>,
-            pub b: Option<u64>
+            pub b: Option<u64>,
+            #[debug_stub(some="Internal")]
+            pub c: Option<Internal>
         }
     }
 
     mod b {
+
+        #[derive(Debug)]
+        pub struct Internal;
+
         #[derive(Debug)]
         pub struct TestStruct {
             pub a: Option<String>,
-            pub b: Option<u64>
+            pub b: Option<u64>,
+            pub c: Option<Internal>
         }
     }
 
     let struct_a = a::TestStruct {
         a: Some("Foo".to_string()),
-        b: None
+        b: None,
+        c: Some(a::Internal)
     };
 
     let struct_b = b::TestStruct {
         a: Some("Foo".to_string()),
-        b: None
+        b: None,
+        c: Some(b::Internal)
     };
 
     assert_eq!(
@@ -387,30 +409,53 @@ fn test_struct_optional_compare_std() {
 #[test]
 fn test_struct_result_compare_std() {
 
+    let t = "Replace";
+    let f = {
+        format!("{:?}", Ok::<_, ()>(format_args!("{}", t)))
+    };
+
     mod a {
+
+        pub struct Internal;
+
         #[derive(DebugStub)]
         pub struct TestStruct {
             pub a: Result<String, bool>,
-            pub b: Result<u64, ()>
+            pub b: Result<u64, ()>,
+            #[debug_stub(ok="Internal")]
+            pub c: Result<Internal, ()>,
+            #[debug_stub(err="Internal")]
+            pub d: Result<(), Internal>
         }
+
     }
 
     mod b {
+
+        #[derive(Debug)]
+        pub struct Internal;
+
         #[derive(Debug)]
         pub struct TestStruct {
             pub a: Result<String, bool>,
-            pub b: Result<u64, ()>
+            pub b: Result<u64, ()>,
+            pub c: Result<Internal, ()>,
+            pub d: Result<(), Internal>
         }
     }
 
     let struct_a = a::TestStruct {
         a: Ok("Foo".to_string()),
-        b: Err(())
+        b: Err(()),
+        c: Ok(a::Internal),
+        d: Err(a::Internal)
     };
 
     let struct_b = b::TestStruct {
         a: Ok("Foo".to_string()),
-        b: Err(())
+        b: Err(()),
+        c: Ok(b::Internal),
+        d: Err(b::Internal)
     };
 
     assert_eq!(
@@ -724,7 +769,9 @@ fn test_enum_optional() {
     assert_eq!(
         format!("{:#?}", TestEnum::VariantA(Some(StructWithoutDebug))),
         r#"VariantA(
-    Some(StructWithoutDebugReplaceValue)
+    Some(
+        StructWithoutDebugReplaceValue
+    )
 )"#
     );
 
@@ -752,7 +799,9 @@ fn test_enum_result_both() {
     assert_eq!(
         format!("{:#?}", TestEnum::VariantA(Err(ErrorWithoutDebug))),
         r#"VariantA(
-    Err(ErrorWithoutDebugReplaceValue)
+    Err(
+        ErrorWithoutDebugReplaceValue
+    )
 )"#
     );
 
@@ -764,7 +813,9 @@ fn test_enum_result_both() {
     assert_eq!(
         format!("{:#?}", TestEnum::VariantA(Ok(StructWithoutDebug))),
         r#"VariantA(
-    Ok(StructWithoutDebugReplaceValue)
+    Ok(
+        StructWithoutDebugReplaceValue
+    )
 )"#
     );
 
@@ -792,7 +843,9 @@ fn test_enum_result_ok() {
     assert_eq!(
         format!("{:#?}", TestEnum::VariantA(Ok(StructWithoutDebug))),
         r#"VariantA(
-    Ok(StructWithoutDebugReplaceValue)
+    Ok(
+        StructWithoutDebugReplaceValue
+    )
 )"#
     );
 
@@ -804,7 +857,9 @@ fn test_enum_result_ok() {
     assert_eq!(
         format!("{:#?}", TestEnum::VariantA(Err("Foo".to_string()))),
         r#"VariantA(
-    Err("Foo")
+    Err(
+        "Foo"
+    )
 )"#
     );
 
@@ -832,7 +887,9 @@ fn test_enum_result_err() {
     assert_eq!(
         format!("{:#?}", TestEnum::VariantA(Err(ErrorWithoutDebug))),
         r#"VariantA(
-    Err(ErrorWithoutDebugReplaceValue)
+    Err(
+        ErrorWithoutDebugReplaceValue
+    )
 )"#
     );
 
@@ -844,7 +901,9 @@ fn test_enum_result_err() {
     assert_eq!(
         format!("{:#?}", TestEnum::VariantA(Ok("Foo".to_string()))),
         r#"VariantA(
-    Ok("Foo")
+    Ok(
+        "Foo"
+    )
 )"#
     );
 

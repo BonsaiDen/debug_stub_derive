@@ -371,7 +371,7 @@ fn implement_some_attr(some: &str, name: Option<String>, ident: &syn::Ident) -> 
     if let Some(name) = name {
         quote! {
             (if #ident.is_some() {
-                f.field(#name, &format_args!("Some({})", #some))
+                f.field(#name, &Some::<_>(format_args!("{}", #some)))
 
             } else {
                 f.field(#name, &format_args!("None"))
@@ -381,7 +381,7 @@ fn implement_some_attr(some: &str, name: Option<String>, ident: &syn::Ident) -> 
     } else {
         quote! {
             (if #ident.is_some() {
-                f.field(&format_args!("Some({})", #some))
+                f.field(&Some::<_>(format_args!("{}", #some)))
 
             } else {
                 f.field(&format_args!("None"))
@@ -394,20 +394,20 @@ fn implement_result_attr(ok: &str, err: &str, name: Option<String>, ident: &syn:
     if let Some(name) = name {
         quote! {
             (if #ident.is_ok() {
-                f.field(#name, &format_args!("Ok({})", #ok))
+                f.field(#name, &Ok::<_, ()>(format_args!("{}", #ok)))
 
             } else {
-                f.field(#name, &format_args!("Err({})", #err))
+                f.field(#name, &Err::<(), _>(format_args!("{}", #err)))
             })
         }
 
     } else {
         quote! {
             (if #ident.is_ok() {
-                f.field(&format_args!("Ok({})", #ok))
+                f.field(&Ok::<_, ()>(format_args!("{}", #ok)))
 
             } else {
-                f.field(&format_args!("Err({})", #err))
+                f.field(&Err::<(), _>(format_args!("{}", #err)))
             })
         }
     }
@@ -417,20 +417,20 @@ fn implement_ok_attr(ok: &str, name: Option<String>, ident: &syn::Ident) -> quot
     if let Some(name) = name {
         quote! {
             (if #ident.is_err() {
-                f.field(#name, &format_args!("Err({:?})", #ident.as_ref().err().unwrap()))
+                f.field(#name, &Err::<(), _>(#ident.as_ref().err().unwrap()))
 
             } else {
-                f.field(#name, &format_args!("Ok({})", #ok))
+                f.field(#name, &Ok::<_, ()>(format_args!("{}", #ok)))
             })
         }
 
     } else {
         quote! {
             (if #ident.is_err() {
-                f.field(&format_args!("Err({:?})", #ident.as_ref().err().unwrap()))
+                f.field(&Err::<(), _>(#ident.as_ref().err().unwrap()))
 
             } else {
-                f.field(&format_args!("Ok({})", #ok))
+                f.field(&Ok::<_, ()>(format_args!("{}", #ok)))
             })
         }
     }
@@ -440,20 +440,20 @@ fn implement_err_attr(err: &str, name: Option<String>, ident: &syn::Ident) -> qu
     if let Some(name) = name {
         quote! {
             (if #ident.is_ok() {
-                f.field(#name, &format_args!("Ok({:?})", #ident.as_ref().ok().unwrap()))
+                f.field(#name, &Ok::<_, ()>(#ident.as_ref().ok().unwrap()))
 
             } else {
-                f.field(#name, &format_args!("Err({})", #err))
+                f.field(#name, &Err::<(), _>(format_args!("{}", #err)))
             })
         }
 
     } else {
         quote! {
             (if #ident.is_ok() {
-                f.field(&format_args!("Ok({:?})", #ident.as_ref().ok().unwrap()))
+                f.field(&Ok::<_, ()>(#ident.as_ref().ok().unwrap()))
 
             } else {
-                f.field(&format_args!("Err({})", #err))
+                f.field(&Err::<(), _>(format_args!("{}", #err)))
             })
         }
     }
