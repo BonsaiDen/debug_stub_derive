@@ -2,11 +2,9 @@
 #[macro_use]
 extern crate debug_stub_derive;
 
-
 // Struct Tests ---------------------------------------------------------------
 #[test]
 fn test_struct_empty() {
-
     #[derive(DebugStub)]
     struct TestStruct;
 
@@ -14,12 +12,10 @@ fn test_struct_empty() {
 
     assert_eq!(format!("{:?}", s), "TestStruct");
     assert_eq!(format!("{:#?}", s), "TestStruct");
-
 }
 
 #[test]
 fn test_struct_compare_std_empty() {
-
     mod a {
         #[derive(DebugStub)]
         pub struct TestStruct;
@@ -39,231 +35,216 @@ fn test_struct_compare_std_empty() {
         format!("{:#?}", a::TestStruct),
         format!("{:#?}", b::TestStruct)
     );
-
 }
 
 #[test]
 fn test_struct() {
-
     #[derive(Debug)]
     struct StructWithDebug {
-        number: u64
+        number: u64,
     }
 
     struct StructWithoutDebug {
-        string: String
+        string: String,
     }
 
     #[derive(DebugStub)]
     struct TestStruct {
         value: bool,
         a: StructWithDebug,
-        #[debug_stub="StructWithoutDebugReplaceValue"]
-        b: StructWithoutDebug
+        #[debug_stub = "StructWithoutDebugReplaceValue"]
+        b: StructWithoutDebug,
     }
 
     let s = TestStruct {
         value: true,
-        a: StructWithDebug {
-            number: 42
-        },
+        a: StructWithDebug { number: 42 },
         b: StructWithoutDebug {
-            string: "Hello World".to_string()
-        }
+            string: "Hello World".to_string(),
+        },
     };
 
     assert_eq!(format!("{:?}", s), "TestStruct { value: true, a: StructWithDebug { number: 42 }, b: StructWithoutDebugReplaceValue }");
-    assert_eq!(format!("{:#?}", s), r#"TestStruct {
+    assert_eq!(
+        format!("{:#?}", s),
+        r#"TestStruct {
     value: true,
     a: StructWithDebug {
         number: 42,
     },
     b: StructWithoutDebugReplaceValue,
-}"#);
-
+}"#
+    );
 }
 
 #[test]
 fn test_struct_compare_std() {
-
     mod a {
         #[derive(Debug)]
         pub struct InternalStruct {
-            pub a: bool
+            pub a: bool,
         }
 
         #[derive(DebugStub)]
         pub struct TestStruct {
             pub a: InternalStruct,
-            pub b: u64
+            pub b: u64,
         }
     }
 
     mod b {
         #[derive(Debug)]
         pub struct InternalStruct {
-            pub a: bool
+            pub a: bool,
         }
 
         #[derive(Debug)]
         pub struct TestStruct {
             pub a: InternalStruct,
-            pub b: u64
+            pub b: u64,
         }
     }
 
     let struct_a = a::TestStruct {
-        a: a::InternalStruct {
-            a: true
-        },
-        b: 42
+        a: a::InternalStruct { a: true },
+        b: 42,
     };
 
     let struct_b = b::TestStruct {
-        a: b::InternalStruct {
-            a: true
-        },
-        b: 42
+        a: b::InternalStruct { a: true },
+        b: 42,
     };
 
-    assert_eq!(
-        format!("{:?}", struct_a),
-        format!("{:?}", struct_b)
-    );
+    assert_eq!(format!("{:?}", struct_a), format!("{:?}", struct_b));
 
-    assert_eq!(
-        format!("{:#?}", struct_a),
-        format!("{:#?}", struct_b)
-    );
-
+    assert_eq!(format!("{:#?}", struct_a), format!("{:#?}", struct_b));
 }
 
 #[test]
 fn test_struct_with_type_parameters() {
-
     use std::fmt::{Debug, Display};
 
     #[derive(DebugStub)]
     struct TestStruct<T: Display + Debug> {
-        t: T
+        t: T,
     }
 
     assert_eq!(
-        format!("{:?}", TestStruct {
-            t: 42
-        }),
+        format!("{:?}", TestStruct { t: 42 }),
         "TestStruct { t: 42 }"
     );
 
     assert_eq!(
-        format!("{:#?}", TestStruct {
-            t: 42
-        }),
+        format!("{:#?}", TestStruct { t: 42 }),
         r#"TestStruct {
     t: 42,
 }"#
     );
-
 }
 
 #[test]
 fn test_struct_with_type_where_clause() {
-
     use std::fmt::{Debug, Display};
 
     #[derive(DebugStub)]
-    struct TestStruct<T> where T: Display + Debug {
-        t: T
+    struct TestStruct<T>
+    where
+        T: Display + Debug,
+    {
+        t: T,
     }
 
     assert_eq!(
-        format!("{:?}", TestStruct {
-            t: 42
-        }),
+        format!("{:?}", TestStruct { t: 42 }),
         "TestStruct { t: 42 }"
     );
 
     assert_eq!(
-        format!("{:#?}", TestStruct {
-            t: 42
-        }),
+        format!("{:#?}", TestStruct { t: 42 }),
         r#"TestStruct {
     t: 42,
 }"#
     );
-
 }
 
 #[test]
 fn test_struct_optional() {
-
     struct StructWithoutDebug;
 
     #[derive(DebugStub)]
     struct TestStruct {
-        #[debug_stub(some="StructWithoutDebugReplaceValue")]
-        s: Option<StructWithoutDebug>
+        #[debug_stub(some = "StructWithoutDebugReplaceValue")]
+        s: Option<StructWithoutDebug>,
     }
 
     assert_eq!(
-        format!("{:?}", TestStruct {
-            s: None
-        }),
+        format!("{:?}", TestStruct { s: None }),
         "TestStruct { s: None }"
     );
 
     assert_eq!(
-        format!("{:#?}", TestStruct {
-            s: None
-        }),
+        format!("{:#?}", TestStruct { s: None }),
         r#"TestStruct {
     s: None,
 }"#
     );
 
     assert_eq!(
-        format!("{:?}", TestStruct {
-            s: Some(StructWithoutDebug)
-        }),
+        format!(
+            "{:?}",
+            TestStruct {
+                s: Some(StructWithoutDebug)
+            }
+        ),
         "TestStruct { s: Some(StructWithoutDebugReplaceValue) }"
     );
 
     assert_eq!(
-        format!("{:#?}", TestStruct {
-            s: Some(StructWithoutDebug)
-        }),
+        format!(
+            "{:#?}",
+            TestStruct {
+                s: Some(StructWithoutDebug)
+            }
+        ),
         r#"TestStruct {
     s: Some(
         StructWithoutDebugReplaceValue,
     ),
 }"#
     );
-
 }
 
 #[test]
 fn test_struct_result_both() {
-
     struct StructWithoutDebug;
     struct ErrorWithoutDebug;
 
     #[derive(DebugStub)]
     struct TestStruct {
-        #[debug_stub(ok="StructWithoutDebugReplaceValue", err="ErrorWithoutDebugReplaceValue")]
-        s: Result<StructWithoutDebug, ErrorWithoutDebug>
+        #[debug_stub(
+            ok = "StructWithoutDebugReplaceValue",
+            err = "ErrorWithoutDebugReplaceValue"
+        )]
+        s: Result<StructWithoutDebug, ErrorWithoutDebug>,
     }
 
     assert_eq!(
-        format!("{:?}", TestStruct {
-            s: Err(ErrorWithoutDebug)
-        }),
+        format!(
+            "{:?}",
+            TestStruct {
+                s: Err(ErrorWithoutDebug)
+            }
+        ),
         "TestStruct { s: Err(ErrorWithoutDebugReplaceValue) }"
     );
 
     assert_eq!(
-        format!("{:#?}", TestStruct {
-            s: Err(ErrorWithoutDebug)
-        }),
+        format!(
+            "{:#?}",
+            TestStruct {
+                s: Err(ErrorWithoutDebug)
+            }
+        ),
         r#"TestStruct {
     s: Err(
         ErrorWithoutDebugReplaceValue,
@@ -272,90 +253,102 @@ fn test_struct_result_both() {
     );
 
     assert_eq!(
-        format!("{:?}", TestStruct {
-            s: Ok(StructWithoutDebug)
-        }),
+        format!(
+            "{:?}",
+            TestStruct {
+                s: Ok(StructWithoutDebug)
+            }
+        ),
         "TestStruct { s: Ok(StructWithoutDebugReplaceValue) }"
     );
 
     assert_eq!(
-        format!("{:#?}", TestStruct {
-            s: Ok(StructWithoutDebug)
-        }),
+        format!(
+            "{:#?}",
+            TestStruct {
+                s: Ok(StructWithoutDebug)
+            }
+        ),
         r#"TestStruct {
     s: Ok(
         StructWithoutDebugReplaceValue,
     ),
 }"#
     );
-
 }
 
 #[test]
 fn test_struct_result_ok() {
-
     struct StructWithoutDebug;
 
     #[derive(DebugStub)]
     struct TestStruct {
-        #[debug_stub(ok="StructWithoutDebugReplaceValue")]
-        s: Result<StructWithoutDebug, ()>
+        #[debug_stub(ok = "StructWithoutDebugReplaceValue")]
+        s: Result<StructWithoutDebug, ()>,
     }
 
     assert_eq!(
-        format!("{:?}", TestStruct {
-            s: Ok(StructWithoutDebug)
-        }),
+        format!(
+            "{:?}",
+            TestStruct {
+                s: Ok(StructWithoutDebug)
+            }
+        ),
         "TestStruct { s: Ok(StructWithoutDebugReplaceValue) }"
     );
 
     assert_eq!(
-        format!("{:#?}", TestStruct {
-            s: Ok(StructWithoutDebug)
-        }),
+        format!(
+            "{:#?}",
+            TestStruct {
+                s: Ok(StructWithoutDebug)
+            }
+        ),
         r#"TestStruct {
     s: Ok(
         StructWithoutDebugReplaceValue,
     ),
 }"#
     );
-
 }
 
 #[test]
 fn test_struct_result_err() {
-
     struct ErrorWithoutDebug;
 
     #[derive(DebugStub)]
     struct TestStruct {
-        #[debug_stub(err="ErrorWithoutDebugReplaceValue")]
-        s: Result<(), ErrorWithoutDebug>
+        #[debug_stub(err = "ErrorWithoutDebugReplaceValue")]
+        s: Result<(), ErrorWithoutDebug>,
     }
 
     assert_eq!(
-        format!("{:?}", TestStruct {
-            s: Err(ErrorWithoutDebug)
-        }),
+        format!(
+            "{:?}",
+            TestStruct {
+                s: Err(ErrorWithoutDebug)
+            }
+        ),
         "TestStruct { s: Err(ErrorWithoutDebugReplaceValue) }"
     );
 
     assert_eq!(
-        format!("{:#?}", TestStruct {
-            s: Err(ErrorWithoutDebug)
-        }),
+        format!(
+            "{:#?}",
+            TestStruct {
+                s: Err(ErrorWithoutDebug)
+            }
+        ),
         r#"TestStruct {
     s: Err(
         ErrorWithoutDebugReplaceValue,
     ),
 }"#
     );
-
 }
 
 #[test]
 fn test_struct_optional_compare_std() {
-
     mod a {
 
         pub struct Internal;
@@ -364,8 +357,8 @@ fn test_struct_optional_compare_std() {
         pub struct TestStruct {
             pub a: Option<String>,
             pub b: Option<u64>,
-            #[debug_stub(some="Internal")]
-            pub c: Option<Internal>
+            #[debug_stub(some = "Internal")]
+            pub c: Option<Internal>,
         }
     }
 
@@ -378,41 +371,31 @@ fn test_struct_optional_compare_std() {
         pub struct TestStruct {
             pub a: Option<String>,
             pub b: Option<u64>,
-            pub c: Option<Internal>
+            pub c: Option<Internal>,
         }
     }
 
     let struct_a = a::TestStruct {
         a: Some("Foo".to_string()),
         b: None,
-        c: Some(a::Internal)
+        c: Some(a::Internal),
     };
 
     let struct_b = b::TestStruct {
         a: Some("Foo".to_string()),
         b: None,
-        c: Some(b::Internal)
+        c: Some(b::Internal),
     };
 
-    assert_eq!(
-        format!("{:?}", struct_a),
-        format!("{:?}", struct_b)
-    );
+    assert_eq!(format!("{:?}", struct_a), format!("{:?}", struct_b));
 
-    assert_eq!(
-        format!("{:#?}", struct_a),
-        format!("{:#?}", struct_b)
-    );
-
+    assert_eq!(format!("{:#?}", struct_a), format!("{:#?}", struct_b));
 }
 
 #[test]
 fn test_struct_result_compare_std() {
-
     let t = "Replace";
-    let f = {
-        format!("{:?}", Ok::<_, ()>(format_args!("{}", t)))
-    };
+    let f = { format!("{:?}", Ok::<_, ()>(format_args!("{}", t))) };
 
     mod a {
 
@@ -422,12 +405,11 @@ fn test_struct_result_compare_std() {
         pub struct TestStruct {
             pub a: Result<String, bool>,
             pub b: Result<u64, ()>,
-            #[debug_stub(ok="Internal")]
+            #[debug_stub(ok = "Internal")]
             pub c: Result<Internal, ()>,
-            #[debug_stub(err="Internal")]
-            pub d: Result<(), Internal>
+            #[debug_stub(err = "Internal")]
+            pub d: Result<(), Internal>,
         }
-
     }
 
     mod b {
@@ -440,7 +422,7 @@ fn test_struct_result_compare_std() {
             pub a: Result<String, bool>,
             pub b: Result<u64, ()>,
             pub c: Result<Internal, ()>,
-            pub d: Result<(), Internal>
+            pub d: Result<(), Internal>,
         }
     }
 
@@ -448,70 +430,47 @@ fn test_struct_result_compare_std() {
         a: Ok("Foo".to_string()),
         b: Err(()),
         c: Ok(a::Internal),
-        d: Err(a::Internal)
+        d: Err(a::Internal),
     };
 
     let struct_b = b::TestStruct {
         a: Ok("Foo".to_string()),
         b: Err(()),
         c: Ok(b::Internal),
-        d: Err(b::Internal)
+        d: Err(b::Internal),
     };
 
-    assert_eq!(
-        format!("{:?}", struct_a),
-        format!("{:?}", struct_b)
-    );
+    assert_eq!(format!("{:?}", struct_a), format!("{:?}", struct_b));
 
-    assert_eq!(
-        format!("{:#?}", struct_a),
-        format!("{:#?}", struct_b)
-    );
-
+    assert_eq!(format!("{:#?}", struct_a), format!("{:#?}", struct_b));
 }
-
 
 // Enum Tests -----------------------------------------------------------------
 
 #[test]
 fn test_enum_empty() {
-
     #[derive(DebugStub)]
     enum TestEnum {
         VariantC {},
-        VariantD
+        VariantD,
     }
 
-    assert_eq!(
-        format!("{:?}", TestEnum::VariantC {}),
-        "VariantC"
-    );
+    assert_eq!(format!("{:?}", TestEnum::VariantC {}), "VariantC");
 
-    assert_eq!(
-        format!("{:?}", TestEnum::VariantC {}),
-        "VariantC"
-    );
+    assert_eq!(format!("{:?}", TestEnum::VariantC {}), "VariantC");
 
-    assert_eq!(
-        format!("{:#?}", TestEnum::VariantD),
-        "VariantD"
-    );
+    assert_eq!(format!("{:#?}", TestEnum::VariantD), "VariantD");
 
-    assert_eq!(
-        format!("{:#?}", TestEnum::VariantD),
-        "VariantD"
-    );
-
+    assert_eq!(format!("{:#?}", TestEnum::VariantD), "VariantD");
 }
 
 #[test]
 fn test_enum_compare_std_empty() {
-
     mod a {
         #[derive(DebugStub)]
         pub enum TestEnum {
             VariantA,
-            VariantB {}
+            VariantB {},
         }
     }
 
@@ -519,7 +478,7 @@ fn test_enum_compare_std_empty() {
         #[derive(Debug)]
         pub enum TestEnum {
             VariantA,
-            VariantB {}
+            VariantB {},
         }
     }
 
@@ -542,47 +501,45 @@ fn test_enum_compare_std_empty() {
         format!("{:#?}", a::TestEnum::VariantB {}),
         format!("{:#?}", b::TestEnum::VariantB {})
     );
-
 }
-
 
 #[test]
 fn test_enum() {
-
     #[derive(Debug)]
     struct StructWithDebug {
-        number: u64
+        number: u64,
     }
 
     struct StructWithoutDebug {
-        string: String
+        string: String,
     }
 
     #[derive(DebugStub)]
     enum TestEnum {
         VariantA(
             StructWithDebug,
-            #[debug_stub="StructWithoutDebugReplaceValue"]
-            StructWithoutDebug,
-            bool
+            #[debug_stub = "StructWithoutDebugReplaceValue"] StructWithoutDebug,
+            bool,
         ),
         VariantB {
             a: StructWithDebug,
-            #[debug_stub="StructWithoutDebugReplaceValue"]
+            #[debug_stub = "StructWithoutDebugReplaceValue"]
             b: StructWithoutDebug,
-            c: bool
-        }
+            c: bool,
+        },
     }
 
     assert_eq!(
-        format!("{:?}", TestEnum::VariantA(StructWithDebug {
-            number: 42
-
-        }, StructWithoutDebug {
-            string: "Hello World".to_string()
-
-        }, true)),
-
+        format!(
+            "{:?}",
+            TestEnum::VariantA(
+                StructWithDebug { number: 42 },
+                StructWithoutDebug {
+                    string: "Hello World".to_string()
+                },
+                true
+            )
+        ),
         "VariantA(StructWithDebug { number: 42 }, StructWithoutDebugReplaceValue, true)"
     );
 
@@ -598,27 +555,21 @@ fn test_enum() {
 
         }), "VariantB { a: StructWithDebug { number: 42 }, b: StructWithoutDebugReplaceValue, c: true }"
     );
-
 }
 
 #[test]
 fn test_enum_compare_std() {
-
     mod a {
 
         #[derive(Debug)]
         pub struct InternalStruct {
-            pub a: bool
+            pub a: bool,
         }
 
         #[derive(DebugStub)]
         pub enum TestEnum {
             VariantA(InternalStruct, bool, u64),
-            VariantB {
-                a: InternalStruct,
-                b: bool,
-                c: u64
-            }
+            VariantB { a: InternalStruct, b: bool, c: u64 },
         }
     }
 
@@ -626,82 +577,51 @@ fn test_enum_compare_std() {
 
         #[derive(Debug)]
         pub struct InternalStruct {
-            pub a: bool
+            pub a: bool,
         }
 
         #[derive(Debug)]
         pub enum TestEnum {
             VariantA(InternalStruct, bool, u64),
-            VariantB {
-                a: InternalStruct,
-                b: bool,
-                c: u64
-            }
+            VariantB { a: InternalStruct, b: bool, c: u64 },
         }
     }
 
-    let enum_a_a = a::TestEnum::VariantA(a::InternalStruct {
-        a: true
-
-    }, false, 42);
+    let enum_a_a = a::TestEnum::VariantA(a::InternalStruct { a: true }, false, 42);
 
     let enum_a_b = a::TestEnum::VariantB {
-        a: a::InternalStruct {
-            a: true
-        },
+        a: a::InternalStruct { a: true },
         b: false,
-        c: 42
+        c: 42,
     };
 
-    let enum_b_a = b::TestEnum::VariantA(b::InternalStruct {
-        a: true
-
-    }, false, 42);
+    let enum_b_a = b::TestEnum::VariantA(b::InternalStruct { a: true }, false, 42);
 
     let enum_b_b = b::TestEnum::VariantB {
-        a: b::InternalStruct {
-            a: true
-        },
+        a: b::InternalStruct { a: true },
         b: false,
-        c: 42
+        c: 42,
     };
 
-    assert_eq!(
-        format!("{:?}", enum_a_a),
-        format!("{:?}", enum_b_a)
-    );
+    assert_eq!(format!("{:?}", enum_a_a), format!("{:?}", enum_b_a));
 
-    assert_eq!(
-        format!("{:#?}", enum_a_a),
-        format!("{:#?}", enum_b_a)
-    );
+    assert_eq!(format!("{:#?}", enum_a_a), format!("{:#?}", enum_b_a));
 
-    assert_eq!(
-        format!("{:?}", enum_a_b),
-        format!("{:?}", enum_b_b)
-    );
+    assert_eq!(format!("{:?}", enum_a_b), format!("{:?}", enum_b_b));
 
-    assert_eq!(
-        format!("{:#?}", enum_a_b),
-        format!("{:#?}", enum_b_b)
-    );
-
+    assert_eq!(format!("{:#?}", enum_a_b), format!("{:#?}", enum_b_b));
 }
 
 #[test]
 fn test_enum_with_type_parameters() {
-
     use std::fmt::{Debug, Display};
 
     #[derive(DebugStub)]
     enum TestEnum<T: Display + Debug> {
-        VariantA(T)
+        VariantA(T),
     }
 
-    assert_eq!(
-        format!("{:?}", TestEnum::VariantA(true)),
-        "VariantA(true)"
-    );
+    assert_eq!(format!("{:?}", TestEnum::VariantA(true)), "VariantA(true)");
 
     assert_eq!(
         format!("{:#?}", TestEnum::VariantA(true)),
@@ -709,23 +629,21 @@ fn test_enum_with_type_parameters() {
     true,
 )"#
     );
-
 }
 
 #[test]
 fn test_enum_with_type_where_clause() {
-
     use std::fmt::{Debug, Display};
 
     #[derive(DebugStub)]
-    enum TestEnum<T> where T: Display + Debug {
-        VariantA(T)
+    enum TestEnum<T>
+    where
+        T: Display + Debug,
+    {
+        VariantA(T),
     }
 
-    assert_eq!(
-        format!("{:?}", TestEnum::VariantA(true)),
-        "VariantA(true)"
-    );
+    assert_eq!(format!("{:?}", TestEnum::VariantA(true)), "VariantA(true)");
 
     assert_eq!(
         format!("{:#?}", TestEnum::VariantA(true)),
@@ -733,26 +651,18 @@ fn test_enum_with_type_where_clause() {
     true,
 )"#
     );
-
 }
 
 #[test]
 fn test_enum_optional() {
-
     struct StructWithoutDebug;
 
     #[derive(DebugStub)]
     enum TestEnum {
-        VariantA(
-            #[debug_stub(some="StructWithoutDebugReplaceValue")]
-            Option<StructWithoutDebug>
-        )
+        VariantA(#[debug_stub(some = "StructWithoutDebugReplaceValue")] Option<StructWithoutDebug>),
     }
 
-    assert_eq!(
-        format!("{:?}", TestEnum::VariantA(None)),
-        "VariantA(None)"
-    );
+    assert_eq!(format!("{:?}", TestEnum::VariantA(None)), "VariantA(None)");
 
     assert_eq!(
         format!("{:#?}", TestEnum::VariantA(None)),
@@ -774,21 +684,22 @@ fn test_enum_optional() {
     ),
 )"#
     );
-
 }
 
 #[test]
 fn test_enum_result_both() {
-
     struct StructWithoutDebug;
     struct ErrorWithoutDebug;
 
     #[derive(DebugStub)]
     enum TestEnum {
         VariantA(
-            #[debug_stub(ok="StructWithoutDebugReplaceValue", err="ErrorWithoutDebugReplaceValue")]
-            Result<StructWithoutDebug, ErrorWithoutDebug>
-        )
+            #[debug_stub(
+                ok = "StructWithoutDebugReplaceValue",
+                err = "ErrorWithoutDebugReplaceValue"
+            )]
+            Result<StructWithoutDebug, ErrorWithoutDebug>,
+        ),
     }
 
     assert_eq!(
@@ -818,21 +729,17 @@ fn test_enum_result_both() {
     ),
 )"#
     );
-
 }
-
 
 #[test]
 fn test_enum_result_ok() {
-
     struct StructWithoutDebug;
 
     #[derive(DebugStub)]
     enum TestEnum {
         VariantA(
-            #[debug_stub(ok="StructWithoutDebugReplaceValue")]
-            Result<StructWithoutDebug, String>
-        )
+            #[debug_stub(ok = "StructWithoutDebugReplaceValue")] Result<StructWithoutDebug, String>,
+        ),
     }
 
     assert_eq!(
@@ -862,21 +769,17 @@ fn test_enum_result_ok() {
     ),
 )"#
     );
-
 }
-
 
 #[test]
 fn test_enum_result_err() {
-
     struct ErrorWithoutDebug;
 
     #[derive(DebugStub)]
     enum TestEnum {
         VariantA(
-            #[debug_stub(err="ErrorWithoutDebugReplaceValue")]
-            Result<String, ErrorWithoutDebug>
-        )
+            #[debug_stub(err = "ErrorWithoutDebugReplaceValue")] Result<String, ErrorWithoutDebug>,
+        ),
     }
 
     assert_eq!(
@@ -906,20 +809,18 @@ fn test_enum_result_err() {
     ),
 )"#
     );
-
 }
 
 #[test]
 fn test_enum_optional_compare_std() {
-
     mod a {
         #[derive(DebugStub)]
         pub enum TestEnum {
             VariantA(Option<String>, Option<String>),
             VariantB {
                 a: Option<String>,
-                b: Option<String>
-            }
+                b: Option<String>,
+            },
         }
     }
 
@@ -929,56 +830,42 @@ fn test_enum_optional_compare_std() {
             VariantA(Option<String>, Option<String>),
             VariantB {
                 a: Option<String>,
-                b: Option<String>
-            }
+                b: Option<String>,
+            },
         }
     }
 
     let enum_a_a = a::TestEnum::VariantA(None, Some("Foo".to_string()));
     let enum_a_b = a::TestEnum::VariantB {
         a: Some("Foo".to_string()),
-        b: None
+        b: None,
     };
 
     let enum_b_a = b::TestEnum::VariantA(None, Some("Foo".to_string()));
     let enum_b_b = b::TestEnum::VariantB {
         a: Some("Foo".to_string()),
-        b: None
+        b: None,
     };
 
-    assert_eq!(
-        format!("{:?}", enum_a_a),
-        format!("{:?}", enum_b_a)
-    );
+    assert_eq!(format!("{:?}", enum_a_a), format!("{:?}", enum_b_a));
 
-    assert_eq!(
-        format!("{:#?}", enum_a_a),
-        format!("{:#?}", enum_b_a)
-    );
+    assert_eq!(format!("{:#?}", enum_a_a), format!("{:#?}", enum_b_a));
 
-    assert_eq!(
-        format!("{:?}", enum_a_b),
-        format!("{:?}", enum_b_b)
-    );
+    assert_eq!(format!("{:?}", enum_a_b), format!("{:?}", enum_b_b));
 
-    assert_eq!(
-        format!("{:#?}", enum_a_b),
-        format!("{:#?}", enum_b_b)
-    );
-
+    assert_eq!(format!("{:#?}", enum_a_b), format!("{:#?}", enum_b_b));
 }
 
 #[test]
 fn test_enum_result_compare_std() {
-
     mod a {
         #[derive(DebugStub)]
         pub enum TestEnum {
             VariantA(Result<String, bool>, Result<String, bool>),
             VariantB {
                 a: Result<String, bool>,
-                b: Result<String, bool>
-            }
+                b: Result<String, bool>,
+            },
         }
     }
 
@@ -988,42 +875,28 @@ fn test_enum_result_compare_std() {
             VariantA(Result<String, bool>, Result<String, bool>),
             VariantB {
                 a: Result<String, bool>,
-                b: Result<String, bool>
-            }
+                b: Result<String, bool>,
+            },
         }
     }
 
     let enum_a_a = a::TestEnum::VariantA(Err(true), Ok("Foo".to_string()));
     let enum_a_b = a::TestEnum::VariantB {
         a: Ok("Foo".to_string()),
-        b: Err(true)
+        b: Err(true),
     };
 
     let enum_b_a = b::TestEnum::VariantA(Err(true), Ok("Foo".to_string()));
     let enum_b_b = b::TestEnum::VariantB {
         a: Ok("Foo".to_string()),
-        b: Err(true)
+        b: Err(true),
     };
 
-    assert_eq!(
-        format!("{:?}", enum_a_a),
-        format!("{:?}", enum_b_a)
-    );
+    assert_eq!(format!("{:?}", enum_a_a), format!("{:?}", enum_b_a));
 
-    assert_eq!(
-        format!("{:#?}", enum_a_a),
-        format!("{:#?}", enum_b_a)
-    );
+    assert_eq!(format!("{:#?}", enum_a_a), format!("{:#?}", enum_b_a));
 
-    assert_eq!(
-        format!("{:?}", enum_a_b),
-        format!("{:?}", enum_b_b)
-    );
+    assert_eq!(format!("{:?}", enum_a_b), format!("{:?}", enum_b_b));
 
-    assert_eq!(
-        format!("{:#?}", enum_a_b),
-        format!("{:#?}", enum_b_b)
-    );
-
+    assert_eq!(format!("{:#?}", enum_a_b), format!("{:#?}", enum_b_b));
 }
-
