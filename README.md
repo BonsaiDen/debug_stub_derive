@@ -9,7 +9,7 @@
 [docsrs]: https://docs.rs/debug_stub_derive/0.3.0/
 
 A drop-in replacement for `#[derive(Debug)]`
-that supports replacement values for members which do not implement 
+that supports replacement values for members which do not implement
 [`fmt::Debug`](https://doc.rust-lang.org/std/fmt/trait.Debug.html).
 
 ## Usage
@@ -21,11 +21,10 @@ Add this to your `Cargo.toml`:
 debug_stub_derive = "0.3.0"
 ```
 
-and this to your crate root:
+and `use` [`DebugStub`](https://docs.rs/debug_stub_derive/0.3/debug_stub_derive/fn.derive_debug_stub.html):
 
 ```rust
-#[macro_use]
-extern crate debug_stub_derive;
+use debug_stub_derive::DebugStub;
 ```
 
 ## License

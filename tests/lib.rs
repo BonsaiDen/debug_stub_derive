@@ -76,9 +76,9 @@ fn test_struct() {
     assert_eq!(format!("{:#?}", s), r#"TestStruct {
     value: true,
     a: StructWithDebug {
-        number: 42
+        number: 42,
     },
-    b: StructWithoutDebugReplaceValue
+    b: StructWithoutDebugReplaceValue,
 }"#);
 
 }
@@ -160,7 +160,7 @@ fn test_struct_with_type_parameters() {
             t: 42
         }),
         r#"TestStruct {
-    t: 42
+    t: 42,
 }"#
     );
 
@@ -188,7 +188,7 @@ fn test_struct_with_type_where_clause() {
             t: 42
         }),
         r#"TestStruct {
-    t: 42
+    t: 42,
 }"#
     );
 
@@ -217,7 +217,7 @@ fn test_struct_optional() {
             s: None
         }),
         r#"TestStruct {
-    s: None
+    s: None,
 }"#
     );
 
@@ -234,8 +234,8 @@ fn test_struct_optional() {
         }),
         r#"TestStruct {
     s: Some(
-        StructWithoutDebugReplaceValue
-    )
+        StructWithoutDebugReplaceValue,
+    ),
 }"#
     );
 
@@ -266,8 +266,8 @@ fn test_struct_result_both() {
         }),
         r#"TestStruct {
     s: Err(
-        ErrorWithoutDebugReplaceValue
-    )
+        ErrorWithoutDebugReplaceValue,
+    ),
 }"#
     );
 
@@ -284,8 +284,8 @@ fn test_struct_result_both() {
         }),
         r#"TestStruct {
     s: Ok(
-        StructWithoutDebugReplaceValue
-    )
+        StructWithoutDebugReplaceValue,
+    ),
 }"#
     );
 
@@ -315,8 +315,8 @@ fn test_struct_result_ok() {
         }),
         r#"TestStruct {
     s: Ok(
-        StructWithoutDebugReplaceValue
-    )
+        StructWithoutDebugReplaceValue,
+    ),
 }"#
     );
 
@@ -346,8 +346,8 @@ fn test_struct_result_err() {
         }),
         r#"TestStruct {
     s: Err(
-        ErrorWithoutDebugReplaceValue
-    )
+        ErrorWithoutDebugReplaceValue,
+    ),
 }"#
     );
 
@@ -706,7 +706,7 @@ fn test_enum_with_type_parameters() {
     assert_eq!(
         format!("{:#?}", TestEnum::VariantA(true)),
         r#"VariantA(
-    true
+    true,
 )"#
     );
 
@@ -730,7 +730,7 @@ fn test_enum_with_type_where_clause() {
     assert_eq!(
         format!("{:#?}", TestEnum::VariantA(true)),
         r#"VariantA(
-    true
+    true,
 )"#
     );
 
@@ -757,7 +757,7 @@ fn test_enum_optional() {
     assert_eq!(
         format!("{:#?}", TestEnum::VariantA(None)),
         r#"VariantA(
-    None
+    None,
 )"#
     );
 
@@ -770,8 +770,8 @@ fn test_enum_optional() {
         format!("{:#?}", TestEnum::VariantA(Some(StructWithoutDebug))),
         r#"VariantA(
     Some(
-        StructWithoutDebugReplaceValue
-    )
+        StructWithoutDebugReplaceValue,
+    ),
 )"#
     );
 
@@ -800,8 +800,8 @@ fn test_enum_result_both() {
         format!("{:#?}", TestEnum::VariantA(Err(ErrorWithoutDebug))),
         r#"VariantA(
     Err(
-        ErrorWithoutDebugReplaceValue
-    )
+        ErrorWithoutDebugReplaceValue,
+    ),
 )"#
     );
 
@@ -814,8 +814,8 @@ fn test_enum_result_both() {
         format!("{:#?}", TestEnum::VariantA(Ok(StructWithoutDebug))),
         r#"VariantA(
     Ok(
-        StructWithoutDebugReplaceValue
-    )
+        StructWithoutDebugReplaceValue,
+    ),
 )"#
     );
 
@@ -844,8 +844,8 @@ fn test_enum_result_ok() {
         format!("{:#?}", TestEnum::VariantA(Ok(StructWithoutDebug))),
         r#"VariantA(
     Ok(
-        StructWithoutDebugReplaceValue
-    )
+        StructWithoutDebugReplaceValue,
+    ),
 )"#
     );
 
@@ -858,8 +858,8 @@ fn test_enum_result_ok() {
         format!("{:#?}", TestEnum::VariantA(Err("Foo".to_string()))),
         r#"VariantA(
     Err(
-        "Foo"
-    )
+        "Foo",
+    ),
 )"#
     );
 
@@ -888,8 +888,8 @@ fn test_enum_result_err() {
         format!("{:#?}", TestEnum::VariantA(Err(ErrorWithoutDebug))),
         r#"VariantA(
     Err(
-        ErrorWithoutDebugReplaceValue
-    )
+        ErrorWithoutDebugReplaceValue,
+    ),
 )"#
     );
 
@@ -902,8 +902,8 @@ fn test_enum_result_err() {
         format!("{:#?}", TestEnum::VariantA(Ok("Foo".to_string()))),
         r#"VariantA(
     Ok(
-        "Foo"
-    )
+        "Foo",
+    ),
 )"#
     );
 

@@ -1,4 +1,5 @@
 [package]
+edition = "2018"
 name = "debug_stub_derive"
 version = "0.3.0"
 authors = ["Ivo Wetzel <ivo.wetzel@googlemail.com>"]

@@ -19,10 +19,8 @@
 //! Using `DebugStub` with structs:
 //!
 //! ```
-//! #[macro_use]
-//! extern crate debug_stub_derive;
+//! use debug_stub_derive::DebugStub;
 //!
-//! # fn main() {
 //! // A struct from an external crate which does not implement the `fmt::Debug`
 //! // trait.
 //! pub struct ExternalCrateStruct;
@@ -42,15 +40,12 @@
 //!     b: ExternalCrateStruct
 //!
 //! }), "PubStruct { a: true, b: ReplacementValue }");
-//! # }
 //! ```
 //!
 //! Using `DebugStub` with enums:
 //!
 //! ```
-//! # #[macro_use]
-//! # extern crate debug_stub_derive;
-//! # fn main() {
+//! # use debug_stub_derive::DebugStub;
 //! pub struct ExternalCrateStruct;
 //!
 //! #[derive(DebugStub)]
@@ -67,15 +62,12 @@
 //!     ExternalCrateStruct
 //!
 //! )), "VariantA(42, ReplacementValue)");
-//! # }
 //! ```
 //!
 //! Using `DebugStub` with `Option` and `Result` types:
 //!
 //! ```
-//! # #[macro_use]
-//! # extern crate debug_stub_derive;
-//! # fn main() {
+//! # use debug_stub_derive::DebugStub;
 //! pub struct ExternalCrateStruct;
 //!
 //! #[derive(DebugStub)]
@@ -91,7 +83,6 @@
 //!     b: Ok(ExternalCrateStruct)
 //!
 //! }), "PubStruct { a: Some(ReplacementSomeValue), b: Ok(ReplacementOkValue) }");
-//! # }
 //! ```
 #![deny(
     trivial_casts, trivial_numeric_casts,
@@ -102,7 +93,6 @@
 
 // Crate Dependencies ---------------------------------------------------------
 extern crate proc_macro;
-extern crate syn;
 #[macro_use] extern crate quote;
 
 
