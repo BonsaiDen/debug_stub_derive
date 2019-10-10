@@ -1,4 +1,5 @@
 [package]
+edition = "2018"
 name = "debug_stub_derive"
 version = "0.3.0"
 authors = ["Ivo Wetzel <ivo.wetzel@googlemail.com>"]
@@ -10,10 +11,10 @@ keywords = ["debug", "trait", "proc_macro"]
 license = "MIT/Apache-2.0"
 
 [dependencies]
-syn = { version = "0.11", features = ["visit"] }
-quote = "0.3.10"
+proc-macro2 = "1.0.5"
+quote = "1.0.2"
+syn = { version = "1.0.5", features = ["full", "visit"] }
 
 [lib]
 name="debug_stub_derive"
 proc-macro = true
-

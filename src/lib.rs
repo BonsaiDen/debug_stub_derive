@@ -19,10 +19,8 @@
 //! Using `DebugStub` with structs:
 //!
 //! ```
-//! #[macro_use]
-//! extern crate debug_stub_derive;
+//! use debug_stub_derive::DebugStub;
 //!
-//! # fn main() {
 //! // A struct from an external crate which does not implement the `fmt::Debug`
 //! // trait.
 //! pub struct ExternalCrateStruct;
@@ -33,429 +31,439 @@
 //! pub struct PubStruct {
 //!     a: bool,
 //!     // Define a replacement debug serialization for the external struct.
-//!     #[debug_stub="ReplacementValue"]
-//!     b: ExternalCrateStruct
+//!     #[debug_stub = "ReplacementValue"]
+//!     b: ExternalCrateStruct,
 //! }
 //!
-//! assert_eq!(format!("{:?}", PubStruct {
-//!     a: true,
-//!     b: ExternalCrateStruct
-//!
-//! }), "PubStruct { a: true, b: ReplacementValue }");
-//! # }
+//! assert_eq!(
+//!     format!(
+//!         "{:?}",
+//!         PubStruct {
+//!             a: true,
+//!             b: ExternalCrateStruct,
+//!         },
+//!     ),
+//!     "PubStruct { a: true, b: ReplacementValue }",
+//! );
 //! ```
 //!
 //! Using `DebugStub` with enums:
 //!
 //! ```
-//! # #[macro_use]
-//! # extern crate debug_stub_derive;
-//! # fn main() {
+//! # use debug_stub_derive::DebugStub;
 //! pub struct ExternalCrateStruct;
 //!
 //! #[derive(DebugStub)]
 //! pub enum PubEnum {
-//!     VariantA(
-//!         u64,
-//!         #[debug_stub="ReplacementValue"]
-//!         ExternalCrateStruct
-//!     )
+//!     VariantA(u64, #[debug_stub = "ReplacementValue"] ExternalCrateStruct),
 //! }
 //!
-//! assert_eq!(format!("{:?}", PubEnum::VariantA(
-//!     42,
-//!     ExternalCrateStruct
-//!
-//! )), "VariantA(42, ReplacementValue)");
-//! # }
+//! assert_eq!(
+//!     format!("{:?}", PubEnum::VariantA(42, ExternalCrateStruct)),
+//!     "VariantA(42, ReplacementValue)",
+//! );
 //! ```
 //!
 //! Using `DebugStub` with `Option` and `Result` types:
 //!
 //! ```
-//! # #[macro_use]
-//! # extern crate debug_stub_derive;
-//! # fn main() {
+//! # use debug_stub_derive::DebugStub;
 //! pub struct ExternalCrateStruct;
 //!
 //! #[derive(DebugStub)]
 //! pub struct PubStruct {
-//!     #[debug_stub(some="ReplacementSomeValue")]
+//!     #[debug_stub(some = "ReplacementSomeValue")]
 //!     a: Option<ExternalCrateStruct>,
-//!     #[debug_stub(ok="ReplacementOkValue")]
-//!     b: Result<ExternalCrateStruct, ()>
+//!     #[debug_stub(ok = "ReplacementOkValue")]
+//!     b: Result<ExternalCrateStruct, ()>,
 //! }
 //!
-//! assert_eq!(format!("{:?}", PubStruct {
-//!     a: Some(ExternalCrateStruct),
-//!     b: Ok(ExternalCrateStruct)
-//!
-//! }), "PubStruct { a: Some(ReplacementSomeValue), b: Ok(ReplacementOkValue) }");
-//! # }
+//! assert_eq!(
+//!     format!(
+//!         "{:?}",
+//!         PubStruct {
+//!             a: Some(ExternalCrateStruct),
+//!             b: Ok(ExternalCrateStruct),
+//!         },
+//!     ),
+//!     "PubStruct { a: Some(ReplacementSomeValue), b: Ok(ReplacementOkValue) }",
+//! );
 //! ```
 #![deny(
-    trivial_casts, trivial_numeric_casts,
+    trivial_casts,
+    trivial_numeric_casts,
     unsafe_code,
-    unused_import_braces, unused_qualifications
+    unused_import_braces,
+    unused_qualifications
 )]
 
-
-// Crate Dependencies ---------------------------------------------------------
 extern crate proc_macro;
-extern crate syn;
-#[macro_use] extern crate quote;
 
-
-// External Dependencies ------------------------------------------------------
-use proc_macro::TokenStream;
-
+use proc_macro2::Span;
+use quote::{quote, ToTokens as _};
+use syn::{
+    parse_macro_input, parse_quote, Arm, Attribute, Data, DataEnum, DataStruct, DataUnion,
+    DeriveInput, Expr, Fields, FieldsNamed, FieldsUnnamed, Generics, Ident, Lit, LitStr, Meta,
+    MetaList, MetaNameValue, NestedMeta, Pat, Stmt,
+};
 
 /// Implementation of the `#[derive(DebugStub)]` derive macro.
 #[proc_macro_derive(DebugStub, attributes(debug_stub))]
-pub fn derive_debug_stub(input: TokenStream) -> TokenStream {
-    let input = syn::parse_derive_input(&input.to_string()).expect("Parse derive input failed.");
+pub fn derive_debug_stub(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
     match expand_derive_serialize(&input) {
-        Ok(expanded) => expanded.parse().expect("Parse expansion failed."),
-        Err(msg) => panic!(msg),
+        Ok(expanded) => expanded,
+        Err(err) => err.to_compile_error(),
     }
+    .into()
 }
 
-fn expand_derive_serialize(ast: &syn::DeriveInput) -> Result<quote::Tokens, String> {
-    match ast.body {
-        syn::Body::Struct(ref data) => {
-            Ok(implement_struct_debug(
-                &ast.ident,
-                &ast.generics,
-                generate_field_tokens(data.fields())
-            ))
+fn expand_derive_serialize(ast: &DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
+    match &ast.data {
+        Data::Struct(DataStruct { fields, .. }) => match fields {
+            Fields::Named(fields) => {
+                let stmts = generate_field_stmts(&fields)?;
+                Ok(implement_named_fields_struct_debug(
+                    &ast.ident,
+                    &ast.generics,
+                    &stmts,
+                ))
+            }
+            Fields::Unnamed(fields) => Err(syn::Error::new_spanned(
+                fields,
+                "unnamed fields are not supported",
+            )),
+            Fields::Unit => Ok(implement_unit_struct_debug(&ast.ident, &ast.generics)),
         },
-        syn::Body::Enum(ref variants) => {
-            Ok(implement_enum_debug(
-                &ast.ident,
-                &ast.generics,
-                variants.iter().map(|variant| {
-                    generate_enum_variant_tokens(&ast.ident, variant)
-
-                }).collect()
-            ))
-        }
+        Data::Enum(DataEnum { variants, .. }) => Ok(implement_enum_debug(
+            &ast.ident,
+            &ast.generics,
+            &variants
+                .iter()
+                .map(|variant| generate_arm(&ast.ident, variant))
+                .collect::<syn::Result<Vec<_>>>()?,
+        )),
+        Data::Union(DataUnion { union_token, .. }) => Err(syn::Error::new_spanned(
+            union_token,
+            "expected struct or enum",
+        )),
     }
 }
 
-fn implement_struct_debug(
-    ident: &syn::Ident,
-    generics: &syn::Generics,
-    tokens: Vec<quote::Tokens>
-
-) -> quote::Tokens {
-
+fn implement_named_fields_struct_debug(
+    ident: &Ident,
+    generics: &Generics,
+    stmts: &[Stmt],
+) -> proc_macro2::TokenStream {
     let name = ident.to_string();
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-    quote! {
+    quote!(
         impl #impl_generics ::std::fmt::Debug for #ident #ty_generics #where_clause {
             fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
                 let mut f = f.debug_struct(#name);
-                #(#tokens);*;
+                #(#stmts)*
                 f.finish()
             }
         }
-    }
+    )
+}
 
+fn implement_unit_struct_debug(ident: &Ident, generics: &Generics) -> proc_macro2::TokenStream {
+    let name = ident.to_string();
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
+    quote!(
+        impl #impl_generics ::std::fmt::Debug for #ident #ty_generics #where_clause {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                f.write_str(#name)
+            }
+        }
+    )
 }
 
 fn implement_enum_debug(
-    ident: &syn::Ident,
-    generics: &syn::Generics,
-    cases: Vec<quote::Tokens>
-
-) -> quote::Tokens {
-
+    ident: &Ident,
+    generics: &Generics,
+    arms: &[Arm],
+) -> proc_macro2::TokenStream {
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     quote! {
         impl #impl_generics ::std::fmt::Debug for #ident #ty_generics #where_clause {
             fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-                match *self {
-                    #(#cases),*
+                match self {
+                    #(#arms)*
                 }
             }
         }
     }
-
 }
 
-fn generate_field_tokens(fields: &[syn::Field]) -> Vec<quote::Tokens> {
-    fields.iter().map(|field| {
-        if let Some(ref ident) = field.ident {
+fn generate_field_stmts(fields: &FieldsNamed) -> syn::Result<Vec<Stmt>> {
+    fields
+        .named
+        .iter()
+        .map(|field| {
+            let ident = field.ident.as_ref().unwrap();
+            let expr = parse_quote!(self.#ident);
             let name = ident.to_string();
-            let ident = syn::Ident::new(format!("self.{}", ident));
-            let (_, tokens) = extract_value_attr(&ident, &field.attrs, Some(name));
-            tokens
-
-        } else {
-            panic!("struct has unnamed fields")
-        }
-
-    }).collect()
+            let (_, stmt) = extract_value_attr(&expr, &field.attrs, Some(name))?;
+            Ok(stmt)
+        })
+        .collect()
 }
 
-fn generate_enum_variant_tokens(ident: &syn::Ident, variant: &syn::Variant) -> quote::Tokens {
-
+fn generate_arm(ident: &Ident, variant: &syn::Variant) -> syn::Result<Arm> {
     let variant_ident = &variant.ident;
     let variant_name = variant_ident.to_string();
 
-    match variant.data {
-        syn::VariantData::Struct(ref fields) => {
+    match &variant.fields {
+        Fields::Named(FieldsNamed { named, .. }) => {
+            let fields = named
+                .iter()
+                .map(|field| {
+                    let ident = field
+                        .ident
+                        .clone()
+                        .expect("Tuple struct variant has unnamed fields");
+                    (ident.clone(), &field.attrs[..], Some(ident.to_string()))
+                })
+                .collect();
+            let (pats, stmts) = generate_enum_variant_fields(fields)?;
 
-            let (idents, tokens) = generate_enum_variant_fields(fields.iter().map(|field| {
-                let ident = field.ident.clone().expect("Tuple struct variant has unnamed fields");
-                (ident.clone(), &field.attrs, Some(ident.to_string()))
-
-            }).collect());
-
-            quote! {
-                #ident::#variant_ident { #(#idents),* } => {
+            Ok(parse_quote! {
+                #ident::#variant_ident { #(#pats),* } => {
                     let mut f = f.debug_struct(#variant_name);
-                    #(#tokens);*;
+                    #(#stmts)*
                     f.finish()
                 }
-            }
-
-        },
-        syn::VariantData::Tuple(ref fields) => {
-
-            let (idents, tokens) = generate_enum_variant_fields(fields.iter().enumerate().map(|(index, field)| {
-                (syn::Ident::new(format!("tuple_{}", index)), &field.attrs, None)
-
-            }).collect());
-
-            quote! {
-                #ident::#variant_ident( #(#idents),* ) => {
-                    let mut f = f.debug_tuple(#variant_name);
-                    #(#tokens);*;
-                    f.finish()
-                }
-            }
-
-        },
-        syn::VariantData::Unit => {
-            quote! {
-                #ident::#variant_ident => {
-                    f.debug_struct(#variant_name).finish()
-                }
-            }
+            })
         }
-    }
+        Fields::Unnamed(FieldsUnnamed { unnamed, .. }) => {
+            let fields = unnamed
+                .iter()
+                .enumerate()
+                .map(|(index, field)| {
+                    (
+                        Ident::new(&format!("tuple_{}", index), Span::call_site()),
+                        &field.attrs[..],
+                        None,
+                    )
+                })
+                .collect();
+            let (pats, stmts) = generate_enum_variant_fields(fields)?;
 
+            Ok(parse_quote! {
+                #ident::#variant_ident( #(#pats),* ) => {
+                    let mut f = f.debug_tuple(#variant_name);
+                    #(#stmts)*
+                    f.finish()
+                }
+            })
+        }
+        Fields::Unit => Ok(parse_quote! {
+            #ident::#variant_ident => f.write_str(#variant_name),
+        }),
+    }
 }
 
 fn generate_enum_variant_fields(
-    fields: Vec<(syn::Ident, &Vec<syn::Attribute>, Option<String>)>
-
-) -> (Vec<quote::Tokens>, Vec<quote::Tokens>) {
-
-    let mut idents = Vec::new();
+    fields: Vec<(Ident, &[Attribute], Option<String>)>,
+) -> syn::Result<(Vec<Pat>, Vec<Stmt>)> {
+    let mut pats = vec![];
     let mut unused_fields = false;
 
-    let tokens: Vec<quote::Tokens> = fields.into_iter().map(|(ident, attrs, name)| {
+    let stmts = fields
+        .into_iter()
+        .map(|(ident, attrs, name)| {
+            let unnamed = name.is_none();
+            let (ident_used, stmt) = extract_value_attr(&parse_quote!(#ident), attrs, name)?;
 
-        let unnamed = name.is_none();
-        let (ident_used, tokens) = extract_value_attr(&ident, attrs, name);
+            if ident_used {
+                pats.push(parse_quote!(#ident));
+            } else if unnamed {
+                // Skip unused tuple fields to avoid "unused variable" warnings
+                pats.push(parse_quote!(_));
+            } else {
+                // Skip unused struct fields to avoid "unused variable" warnings
+                unused_fields = true;
+            }
 
-        if ident_used {
-            idents.push(quote! { ref #ident });
-
-        // Skip unused tuple fields to avoid "unused variable" warnings
-        } else if unnamed {
-            idents.push(quote! { _ });
-
-        // Skip unused struct fields to avoid "unused variable" warnings
-        } else {
-            unused_fields = true;
-        }
-
-        tokens
-
-    }).collect();
+            Ok(stmt)
+        })
+        .collect::<syn::Result<Vec<_>>>()?;
 
     if unused_fields {
-        idents.push(quote! { .. });
+        pats.push(parse_quote!(..));
     }
 
-    (idents, tokens)
-
+    Ok((pats, stmts))
 }
 
 fn extract_value_attr(
-    ident: &syn::Ident,
-    attrs: &[syn::Attribute],
-    name: Option<String>
-
-) -> (bool, quote::Tokens) {
-
+    expr: &Expr,
+    attrs: &[Attribute],
+    name: Option<String>,
+) -> syn::Result<(bool, Stmt)> {
     for attr in attrs {
-        if attr.value.name() != "debug_stub" {
-            continue;
-
-        } else if let syn::MetaItem::NameValue(_, syn::Lit::Str(ref value, _)) = attr.value {
-            return (false, implement_replace_attr(name, value));
-
-        } else if let syn::MetaItem::List(_, ref items) = attr.value {
-            match extract_named_value_attrs(items) {
-                (_, _, Some(some)) => return (true, implement_some_attr(some, name, ident)),
-                (Some(ok), Some(err), None) => return (true, implement_result_attr(ok, err, name, ident)),
-                (Some(ok), None, None) => return (true, implement_ok_attr(ok, name, ident)),
-                (None, Some(err), None) => return (true, implement_err_attr(err, name, ident)),
-                _ => {}
+        if let Ok(meta) = attr.parse_meta() {
+            match meta {
+                Meta::Path(path) => {
+                    if path.get_ident().map_or(false, |i| i == "debug_stub") {
+                        return Err(syn::Error::new_spanned(
+                            path,
+                            "expected `List` or `NameValue`",
+                        ));
+                    }
+                }
+                Meta::List(MetaList { path, nested, .. }) => {
+                    if path.get_ident().map_or(false, |i| i == "debug_stub") {
+                        return match extract_named_value_attrs(nested.iter()) {
+                            (None, None, Some(some)) => {
+                                Ok((true, implement_some_attr(&some, name, expr)))
+                            }
+                            (Some(ok), Some(err), None) => {
+                                Ok((true, implement_result_attr(&ok, &err, name, expr)))
+                            }
+                            (Some(ok), None, None) => {
+                                Ok((true, implement_ok_attr(&ok, name, expr)))
+                            }
+                            (None, Some(err), None) => {
+                                Ok((true, implement_err_attr(&err, name, expr)))
+                            }
+                            _ => Err(syn::Error::new_spanned(
+                                nested,
+                                "expected `some = _`, `ok = _`, `err = _`, or `ok = _, err = _`",
+                            )),
+                        };
+                    }
+                }
+                Meta::NameValue(MetaNameValue { path, lit, .. }) => {
+                    if path.get_ident().map_or(false, |i| i == "debug_stub") {
+                        let lit = syn::parse2::<LitStr>(lit.to_token_stream())?;
+                        return Ok((false, implement_replace_attr(name, &lit.value())));
+                    }
+                }
             }
         }
     }
 
-    if let Some(name) = name {
-        (true, quote! { f.field(#name, &#ident) })
-
-    } else {
-        (true, quote! { f.field(&#ident) })
-    }
-
+    Ok(match name {
+        Some(name) => (true, parse_quote!(f.field(#name, &#expr);)),
+        None => (true, parse_quote!(f.field(&#expr);)),
+    })
 }
 
-fn extract_named_value_attrs<'a>(items: &'a [syn::NestedMetaItem]) -> (Option<&'a str>, Option<&'a str>, Option<&'a str>) {
-
+fn extract_named_value_attrs<'a>(
+    nested: impl Iterator<Item = &'a NestedMeta>,
+) -> (Option<String>, Option<String>, Option<String>) {
     let (mut ok, mut err, mut some) = (None, None, None);
 
-    for item in items {
-        if let &syn::NestedMetaItem::MetaItem(
-            syn::MetaItem::NameValue(ref attr_name, syn::Lit::Str(ref value, _))
-
-        ) = item {
-            if attr_name == "some" {
-                some = Some(value.as_str());
-
-            } else if attr_name == "ok" {
-                ok = Some(value.as_str());
-
-            } else if attr_name == "err" {
-                err = Some(value.as_str());
+    for nested in nested {
+        if let NestedMeta::Meta(Meta::NameValue(MetaNameValue {
+            path,
+            lit: Lit::Str(lit),
+            ..
+        })) = nested
+        {
+            if path.get_ident().map_or(false, |i| i == "some") {
+                some = Some(lit.value());
+            } else if path.get_ident().map_or(false, |i| i == "ok") {
+                ok = Some(lit.value());
+            } else if path.get_ident().map_or(false, |i| i == "err") {
+                err = Some(lit.value());
             }
         }
     }
 
     (ok, err, some)
-
 }
 
-macro_rules! field_block {
-    ($name:expr, $($tt:tt)*) => (
-        {
-            if let Some(name) = $name {
-                quote! {
-                    f.field(#name, $($tt)*)
-                }
+fn implement_replace_attr(name: Option<String>, value: &str) -> Stmt {
+    if let Some(name) = name {
+        parse_quote!(f.field(#name, &format_args!("{}", #value));)
+    } else {
+        parse_quote!(f.field(&format_args!("{}", #value));)
+    }
+}
 
+fn implement_some_attr(some: &str, name: Option<String>, expr: &Expr) -> Stmt {
+    if let Some(name) = name {
+        parse_quote! {
+            if #expr.is_some() {
+                f.field(#name, &Some::<_>(format_args!("{}", #some)));
             } else {
-                quote! {
-                    f.field($($tt)*)
-                }
+                f.field(#name, &format_args!("None"));
             }
         }
-    );
-}
-
-fn implement_replace_attr(name: Option<String>, value: &str) -> quote::Tokens {
-    field_block!(name, &format_args!("{}", #value))
-}
-
-fn implement_some_attr(some: &str, name: Option<String>, ident: &syn::Ident) -> quote::Tokens {
-    if let Some(name) = name {
-        quote! {
-            (if #ident.is_some() {
-                f.field(#name, &Some::<_>(format_args!("{}", #some)))
-
-            } else {
-                f.field(#name, &format_args!("None"))
-            })
-        }
-
     } else {
-        quote! {
-            (if #ident.is_some() {
-                f.field(&Some::<_>(format_args!("{}", #some)))
-
+        parse_quote! {
+            if #expr.is_some() {
+                f.field(&Some::<_>(format_args!("{}", #some)));
             } else {
-                f.field(&format_args!("None"))
-            })
+                f.field(&format_args!("None"));
+            }
         }
     }
 }
 
-fn implement_result_attr(ok: &str, err: &str, name: Option<String>, ident: &syn::Ident) -> quote::Tokens {
+fn implement_result_attr(ok: &str, err: &str, name: Option<String>, expr: &Expr) -> Stmt {
     if let Some(name) = name {
-        quote! {
-            (if #ident.is_ok() {
-                f.field(#name, &Ok::<_, ()>(format_args!("{}", #ok)))
-
+        parse_quote! {
+            if #expr.is_ok() {
+                f.field(#name, &Ok::<_, ()>(format_args!("{}", #ok)));
             } else {
-                f.field(#name, &Err::<(), _>(format_args!("{}", #err)))
-            })
+                f.field(#name, &Err::<(), _>(format_args!("{}", #err)));
+            }
         }
-
     } else {
-        quote! {
-            (if #ident.is_ok() {
-                f.field(&Ok::<_, ()>(format_args!("{}", #ok)))
-
+        parse_quote! {
+            if #expr.is_ok() {
+                f.field(&Ok::<_, ()>(format_args!("{}", #ok)));
             } else {
-                f.field(&Err::<(), _>(format_args!("{}", #err)))
-            })
+                f.field(&Err::<(), _>(format_args!("{}", #err)));
+            }
         }
     }
 }
 
-fn implement_ok_attr(ok: &str, name: Option<String>, ident: &syn::Ident) -> quote::Tokens {
+fn implement_ok_attr(ok: &str, name: Option<String>, expr: &Expr) -> Stmt {
     if let Some(name) = name {
-        quote! {
-            (if #ident.is_err() {
-                f.field(#name, &Err::<(), _>(#ident.as_ref().err().unwrap()))
-
+        parse_quote! {
+            if #expr.is_err() {
+                f.field(#name, &Err::<(), _>(#expr.as_ref().err().unwrap()));
             } else {
-                f.field(#name, &Ok::<_, ()>(format_args!("{}", #ok)))
-            })
+                f.field(#name, &Ok::<_, ()>(format_args!("{}", #ok)));
+            }
         }
-
     } else {
-        quote! {
-            (if #ident.is_err() {
-                f.field(&Err::<(), _>(#ident.as_ref().err().unwrap()))
-
+        parse_quote! {
+            if #expr.is_err() {
+                f.field(&Err::<(), _>(#expr.as_ref().err().unwrap()));
             } else {
-                f.field(&Ok::<_, ()>(format_args!("{}", #ok)))
-            })
+                f.field(&Ok::<_, ()>(format_args!("{}", #ok)));
+            }
         }
     }
 }
 
-fn implement_err_attr(err: &str, name: Option<String>, ident: &syn::Ident) -> quote::Tokens {
+fn implement_err_attr(err: &str, name: Option<String>, expr: &Expr) -> Stmt {
     if let Some(name) = name {
-        quote! {
-            (if #ident.is_ok() {
-                f.field(#name, &Ok::<_, ()>(#ident.as_ref().ok().unwrap()))
-
+        parse_quote! {
+            if #expr.is_ok() {
+                f.field(#name, &Ok::<_, ()>(#expr.as_ref().ok().unwrap()));
             } else {
-                f.field(#name, &Err::<(), _>(format_args!("{}", #err)))
-            })
+                f.field(#name, &Err::<(), _>(format_args!("{}", #err)));
+            }
         }
-
     } else {
-        quote! {
-            (if #ident.is_ok() {
-                f.field(&Ok::<_, ()>(#ident.as_ref().ok().unwrap()))
-
+        parse_quote! {
+            if #expr.is_ok() {
+                f.field(&Ok::<_, ()>(#expr.as_ref().ok().unwrap()));
             } else {
-                f.field(&Err::<(), _>(format_args!("{}", #err)))
-            })
+                f.field(&Err::<(), _>(format_args!("{}", #err)));
+            }
         }
     }
 }
-
