@@ -1,6 +1,7 @@
 // Crate Dependencies ---------------------------------------------------------
-#[macro_use]
-extern crate debug_stub_derive;
+use debug_stub_derive::DebugStub;
+
+use std::fmt::Debug;
 
 // Struct Tests ---------------------------------------------------------------
 #[test]
@@ -17,6 +18,8 @@ fn test_struct_empty() {
 #[test]
 fn test_struct_compare_std_empty() {
     mod a {
+        use debug_stub_derive::DebugStub;
+
         #[derive(DebugStub)]
         pub struct TestStruct;
     }
@@ -45,6 +48,7 @@ fn test_struct() {
     }
 
     struct StructWithoutDebug {
+        #[allow(dead_code)]
         string: String,
     }
 
@@ -52,6 +56,7 @@ fn test_struct() {
     struct TestStruct {
         value: bool,
         a: StructWithDebug,
+        #[allow(dead_code)]
         #[debug_stub = "StructWithoutDebugReplaceValue"]
         b: StructWithoutDebug,
     }
@@ -78,8 +83,46 @@ fn test_struct() {
 }
 
 #[test]
+fn test_struct_dyn_fields() {
+    trait Trait: Debug {}
+
+    #[derive(Debug)]
+    struct TraitImpl;
+
+    impl Trait for TraitImpl {}
+
+    #[derive(DebugStub)]
+    struct Struct<'a> {
+        a: Box<dyn Trait>,
+        #[allow(dead_code)]
+        #[debug_stub = "_"]
+        b: Box<dyn Trait>,
+        c: &'a dyn Trait,
+        #[allow(dead_code)]
+        #[debug_stub = "_"]
+        d: &'a dyn Trait,
+    }
+
+    let trait_impl = TraitImpl;
+    assert_eq!(
+        format!(
+            "{:?}",
+            Struct {
+                a: Box::new(TraitImpl),
+                b: Box::new(TraitImpl),
+                c: &trait_impl,
+                d: &trait_impl,
+            },
+        ),
+        "Struct { a: TraitImpl, b: _, c: TraitImpl, d: _ }",
+    );
+}
+
+#[test]
 fn test_struct_compare_std() {
     mod a {
+        use debug_stub_derive::DebugStub;
+
         #[derive(Debug)]
         pub struct InternalStruct {
             pub a: bool,
@@ -350,6 +393,7 @@ fn test_struct_result_err() {
 #[test]
 fn test_struct_optional_compare_std() {
     mod a {
+        use debug_stub_derive::DebugStub;
 
         pub struct Internal;
 
@@ -363,7 +407,6 @@ fn test_struct_optional_compare_std() {
     }
 
     mod b {
-
         #[derive(Debug)]
         pub struct Internal;
 
@@ -394,10 +437,8 @@ fn test_struct_optional_compare_std() {
 
 #[test]
 fn test_struct_result_compare_std() {
-    let t = "Replace";
-    let f = { format!("{:?}", Ok::<_, ()>(format_args!("{}", t))) };
-
     mod a {
+        use debug_stub_derive::DebugStub;
 
         pub struct Internal;
 
@@ -413,7 +454,6 @@ fn test_struct_result_compare_std() {
     }
 
     mod b {
-
         #[derive(Debug)]
         pub struct Internal;
 
@@ -467,6 +507,8 @@ fn test_enum_empty() {
 #[test]
 fn test_enum_compare_std_empty() {
     mod a {
+        use debug_stub_derive::DebugStub;
+
         #[derive(DebugStub)]
         pub enum TestEnum {
             VariantA,
@@ -511,6 +553,7 @@ fn test_enum() {
     }
 
     struct StructWithoutDebug {
+        #[allow(dead_code)]
         string: String,
     }
 
@@ -523,6 +566,7 @@ fn test_enum() {
         ),
         VariantB {
             a: StructWithDebug,
+            #[allow(dead_code)]
             #[debug_stub = "StructWithoutDebugReplaceValue"]
             b: StructWithoutDebug,
             c: bool,
@@ -558,8 +602,71 @@ fn test_enum() {
 }
 
 #[test]
+fn test_enum_dyn_fields() {
+    trait Trait: Debug {}
+
+    #[derive(Debug)]
+    struct TraitImpl;
+
+    impl Trait for TraitImpl {}
+
+    #[derive(DebugStub)]
+    enum Enum<'a> {
+        A(
+            Box<dyn Trait>,
+            #[allow(dead_code)]
+            #[debug_stub = "_"]
+            Box<dyn Trait>,
+            &'a dyn Trait,
+            #[allow(dead_code)]
+            #[debug_stub = "_"]
+            &'a dyn Trait,
+        ),
+        B {
+            a: Box<dyn Trait>,
+            #[allow(dead_code)]
+            #[debug_stub = "_"]
+            b: Box<dyn Trait>,
+            c: &'a dyn Trait,
+            #[allow(dead_code)]
+            #[debug_stub = "_"]
+            d: &'a dyn Trait,
+        },
+    }
+
+    let trait_impl = TraitImpl;
+
+    assert_eq!(
+        format!(
+            "{:?}",
+            Enum::A(
+                Box::new(TraitImpl),
+                Box::new(TraitImpl),
+                &trait_impl,
+                &trait_impl,
+            ),
+        ),
+        "A(TraitImpl, _, TraitImpl, _)",
+    );
+
+    assert_eq!(
+        format!(
+            "{:?}",
+            Enum::B {
+                a: Box::new(TraitImpl),
+                b: Box::new(TraitImpl),
+                c: &trait_impl,
+                d: &trait_impl,
+            },
+        ),
+        "B { a: TraitImpl, b: _, c: TraitImpl, d: _ }",
+    );
+}
+
+#[test]
 fn test_enum_compare_std() {
     mod a {
+        use debug_stub_derive::DebugStub;
 
         #[derive(Debug)]
         pub struct InternalStruct {
@@ -574,7 +681,6 @@ fn test_enum_compare_std() {
     }
 
     mod b {
-
         #[derive(Debug)]
         pub struct InternalStruct {
             pub a: bool,
@@ -814,6 +920,8 @@ fn test_enum_result_err() {
 #[test]
 fn test_enum_optional_compare_std() {
     mod a {
+        use debug_stub_derive::DebugStub;
+
         #[derive(DebugStub)]
         pub enum TestEnum {
             VariantA(Option<String>, Option<String>),
@@ -859,6 +967,8 @@ fn test_enum_optional_compare_std() {
 #[test]
 fn test_enum_result_compare_std() {
     mod a {
+        use debug_stub_derive::DebugStub;
+
         #[derive(DebugStub)]
         pub enum TestEnum {
             VariantA(Result<String, bool>, Result<String, bool>),
